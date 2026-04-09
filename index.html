@@ -531,6 +531,29 @@ tbody td.tax-cell  { color: var(--red); }
   </div>
   </div><!-- end collapsible-body: Tax & Conversion -->
 
+  <div class="section-title collapsible" onclick="toggleSection(this)">Withdrawal Strategy</div>
+  <div class="collapsible-body">
+  <div style="padding:10px 4px 6px">
+    <div style="margin-bottom:10px;font-size:12px;color:#5b7ec9;font-family:Georgia,serif;font-weight:700">After Trad 401k/IRA, draw from:</div>
+    <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;margin-bottom:8px;background:rgba(91,126,201,0.08);border-radius:6px;cursor:pointer;border:1px solid transparent" id="wd-opt-a-label">
+      <input type="radio" name="wd_order" id="i_wd_order_a" value="roth_brok" checked onchange="runAll()" style="width:auto;height:auto;margin-top:2px;flex-shrink:0">
+      <div>
+        <div style="font-weight:700;font-size:12px;color:#e8c96a">Option A — Preserve Brokerage</div>
+        <div style="font-size:11px;color:#a0b4c8;margin-top:3px">Trad 401k/IRA → <strong style="color:#6fcf97">Roth IRA</strong> → Brokerage</div>
+        <div style="font-size:10px;color:#7a8fa0;margin-top:4px">Maximises tax-free Roth growth; draws brokerage last</div>
+      </div>
+    </label>
+    <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:rgba(91,126,201,0.08);border-radius:6px;cursor:pointer;border:1px solid transparent" id="wd-opt-b-label">
+      <input type="radio" name="wd_order" id="i_wd_order_b" value="brok_roth" onchange="runAll()" style="width:auto;height:auto;margin-top:2px;flex-shrink:0">
+      <div>
+        <div style="font-weight:700;font-size:12px;color:#e8c96a">Option B — Preserve Roth</div>
+        <div style="font-size:11px;color:#a0b4c8;margin-top:3px">Trad 401k/IRA → <strong style="color:#e8a87c">Brokerage</strong> → Roth IRA</div>
+        <div style="font-size:10px;color:#7a8fa0;margin-top:4px">Keeps Roth intact for heirs; draws brokerage before Roth</div>
+      </div>
+    </label>
+  </div>
+  </div><!-- end collapsible-body: Withdrawal Strategy -->
+
   <button class="calc-btn" onclick="runAll()">CALCULATE ALL TABS</button>
 
   <div class="note">
@@ -560,7 +583,7 @@ tbody td.tax-cell  { color: var(--red); }
 <div id="tab-withdrawal" class="panel">
   <div id="wd-summary" class="cards"></div>
   <div class="section-title">Annual Withdrawal Plan</div>
-  <div class="note">Withdrawal order: Trad 401k/IRA first &rarr; Roth IRA (yours + spouse combined) &rarr; Brokerage &middot; HSA pays <strong>member Medicare only</strong> (spouse Medicare from withdrawals) &middot; Spouse moves to Medicare at age 65 &middot; <strong>NJ:</strong> SS exempt, $100k retirement income exclusion (MFJ 62+) &middot; <strong>Avoid IRMAA</strong> checkbox caps conversions so MAGI ≤ $206k (MFJ) &middot; State Tax = NJ rules or flat rate × (conv + Trad draw)</div>
+  <div id="wd-note" class="note">Withdrawal order: Trad 401k/IRA first &rarr; Roth IRA (yours + spouse combined) &rarr; Brokerage &middot; HSA pays <strong>member Medicare only</strong> (spouse Medicare from withdrawals) &middot; Spouse moves to Medicare at age 65 &middot; <strong>NJ:</strong> SS exempt, $100k retirement income exclusion (MFJ 62+) &middot; <strong>Avoid IRMAA</strong> checkbox caps conversions so MAGI ≤ $206k (MFJ) &middot; State Tax = NJ rules or flat rate × (conv + Trad draw)</div>
   <div class="tbl-wrap">
     <table>
       <thead><tr>
@@ -769,7 +792,8 @@ function calc() {
     ss_taxable_pct:  v('i_ss_taxable_pct') / 100,
     rmd_age:         v('i_rmd_age') || 73,
     ltcg_rate:       v('i_ltcg_rate') / 100,
-    avoid_irmaa:     !!($('i_avoid_irmaa') && $('i_avoid_irmaa').checked)
+    avoid_irmaa:     !!($('i_avoid_irmaa') && $('i_avoid_irmaa').checked),
+    wd_order:        ($('i_wd_order_b') && $('i_wd_order_b').checked) ? 'brok_roth' : 'roth_brok'
   };
 
   var ssMonthly = INP.ss_age === 65 ? INP.ss65 : (INP.ss_age === 70 ? INP.ss70 : INP.ss67);
@@ -868,50 +892,55 @@ function calc() {
       var hsaPay = medicareYr;
 
       // ── TAX & WITHDRAWAL LOGIC ──
-      // Taxes are computed on ss_taxable + conv (the planned taxable income for the year).
-      // Cash gap for living expenses is filled in order: Roth pool → Brokerage → Trad (last resort).
-      // Trad is drawn for expenses only when Roth+Brokerage are exhausted.
-      // If trad IS drawn for expenses, that additional amount is also taxable (one correction pass).
+      //
+      // Correct cash flow model:
+      //   • Conv is a trad→Roth transfer — the tax bill on conv is paid from trad (taxable source)
+      //   • Living expense gap (totalNeeds - SS - HSA) is funded in withdrawal order:
+      //       Option A: Roth first → Brokerage → Trad (last resort, taxable)
+      //       Option B: Brokerage first → Roth → Trad (last resort, taxable)
+      //   • Any trad draw for living expenses ALSO adds to taxable income (one correction pass)
+      //   • Roth and Brokerage draws are tax-free — they do NOT increase the tax bill
+      //
+      // Therefore: taxes are NOT included in the cash 'needed' from Roth/Brokerage.
+      // Taxes are funded separately from trad (along with any living gap trad must cover).
 
-      // Step 1: taxes on planned income (ss + conv)
-      var ft       = fedTax(ss_taxable + conv);
-      var stateTax = calcStateTax(INP, age, ss_taxable, conv, 0);
+      var livingGap = Math.max(0, totalNeeds - totalSS - hsaPay);  // pure expense gap, no taxes
 
-      // Step 2: cash needed after SS, HSA, and planned taxes
-      var needed   = Math.max(0, totalNeeds - totalSS - hsaPay + ft + stateTax);
-
-      // Step 3: fill gap from tax-free sources first (Roth pool, then Brokerage)
+      // Step 1: fill living gap from tax-free sources in chosen order
       var rothTotal   = (roth + conv) + rothSp;
-      var rothDraw    = Math.min(rothTotal, needed);
-      var rothDraw_me = rothTotal > 0 ? rothDraw * (roth + conv) / rothTotal : 0;
-      var rothDraw_sp = rothTotal > 0 ? rothDraw * rothSp / rothTotal : 0;
-      var afterRoth   = Math.max(0, needed - rothDraw);
-      var brokDraw    = Math.min(brok, afterRoth);
-      var afterBrok   = Math.max(0, afterRoth - brokDraw);
+      var rothDraw = 0, rothDraw_me = 0, rothDraw_sp = 0, brokDraw = 0;
+      var optB = (INP.wd_order === 'brok_roth');
 
-      // Step 4: only if Roth + Brokerage exhausted, draw from trad (taxable — do one correction pass)
-      var tradDraw = 0;
-      if (afterBrok > 0) {
-        tradDraw     = Math.min(Math.max(0, trad - conv), afterBrok);
-        // One correction pass: tradDraw raises taxable income → more taxes needed → more tradDraw
-        ft           = fedTax(ss_taxable + conv + tradDraw);
-        stateTax     = calcStateTax(INP, age, ss_taxable, conv, tradDraw);
-        needed       = Math.max(0, totalNeeds - totalSS - hsaPay + ft + stateTax);
-        // Recalculate full withdrawal stack with corrected taxes
-        rothDraw     = Math.min(rothTotal, needed);
-        rothDraw_me  = rothTotal > 0 ? rothDraw * (roth + conv) / rothTotal : 0;
-        rothDraw_sp  = rothTotal > 0 ? rothDraw * rothSp / rothTotal : 0;
-        afterRoth    = Math.max(0, needed - rothDraw);
-        brokDraw     = Math.min(brok, afterRoth);
-        afterBrok    = Math.max(0, afterRoth - brokDraw);
-        tradDraw     = Math.min(Math.max(0, trad - conv), afterBrok);
-        ft           = fedTax(ss_taxable + conv + tradDraw);
-        stateTax     = calcStateTax(INP, age, ss_taxable, conv, tradDraw);
+      if (optB) {
+        brokDraw = Math.min(brok, livingGap);
+        rothDraw = Math.min(rothTotal, Math.max(0, livingGap - brokDraw));
+      } else {
+        rothDraw = Math.min(rothTotal, livingGap);
+        brokDraw = Math.min(brok, Math.max(0, livingGap - rothDraw));
       }
+      var livingFromTrad = Math.max(0, livingGap - rothDraw - brokDraw);
+
+      // Step 2: trad covers (a) living gap remainder + (b) tax bill on ss+conv+tradDraw
+      // tradDraw is taxable so iterate once to converge taxes
+      var tradDraw = livingFromTrad;
+      var ft       = fedTax(ss_taxable + conv + tradDraw);
+      var stateTax = calcStateTax(INP, age, ss_taxable, conv, tradDraw);
+      // One correction pass: taxes increase tradDraw → recompute
+      tradDraw = livingFromTrad + ft + stateTax;
+      tradDraw = Math.min(Math.max(0, trad - conv), tradDraw);
+      ft       = fedTax(ss_taxable + conv + tradDraw);
+      stateTax = calcStateTax(INP, age, ss_taxable, conv, tradDraw);
+      // Final trad draw capped at available
+      tradDraw = Math.min(Math.max(0, trad - conv), livingFromTrad + ft + stateTax);
+      ft       = fedTax(ss_taxable + conv + tradDraw);
+      stateTax = calcStateTax(INP, age, ss_taxable, conv, tradDraw);
+
+      rothDraw_me = rothTotal > 0 ? rothDraw * (roth + conv) / rothTotal : 0;
+      rothDraw_sp = rothTotal > 0 ? rothDraw * rothSp / rothTotal : 0;
 
       var totalTaxable = ss_taxable + conv + tradDraw;
       var stateTaxBase = conv + tradDraw;
-      var surplus  = totalSS + tradDraw + rothDraw + brokDraw + hsaPay - totalNeeds - ft - stateTax;
+      var surplus  = totalSS + rothDraw + brokDraw + tradDraw + hsaPay - totalNeeds - ft - stateTax;
 
       var tradEnd  = Math.max(0, (trad - conv - tradDraw)) * (1 + INP.growth);
       var newRoth  = Math.max(0, (roth + conv - rothDraw_me)) * (1 + INP.growth);
@@ -1001,13 +1030,27 @@ function renderWithdrawal(rows, INP) {
     tStateTax+=rows[i].stateTax;
   }
   var stateLabel = INP ? INP.state : 'State';
+  var isOptB = INP && INP.wd_order === 'brok_roth';
+  var orderLabel = isOptB
+    ? 'Trad 401k/IRA first &rarr; Brokerage &rarr; Roth IRA (yours + spouse combined)'
+    : 'Trad 401k/IRA first &rarr; Roth IRA (yours + spouse combined) &rarr; Brokerage';
+  var rothPriority  = isOptB ? 'Last draw priority'   : 'Second draw priority';
+  var brokPriority  = isOptB ? 'Second draw priority' : 'Last draw priority';
+
+  // Update the note in the Withdraw tab
+  var wdNote = $('wd-note');
+  if (wdNote) wdNote.innerHTML = '<strong>Withdrawal order:</strong> ' + orderLabel +
+    ' &middot; HSA pays <strong>member Medicare only</strong> &middot; Spouse moves to Medicare at age 65' +
+    ' &middot; <strong>NJ:</strong> SS exempt, $100k retirement income exclusion (MFJ 62+)' +
+    ' &middot; <strong>Avoid IRMAA</strong> caps conversions so MAGI ≤ $206k (MFJ)' +
+    ' &middot; State Tax = NJ rules or flat rate × (conv + Trad draw)';
 
   $('wd-summary').innerHTML =
     '<div class="card gold"><div class="card-label">Your Total SS</div><div class="card-value">' + fmtK(tSS) + '</div><div class="card-sub">Ages 64-85</div></div>' +
     '<div class="card gold"><div class="card-label">Spouse Total SS</div><div class="card-value">' + fmtK(tSpSS) + '</div><div class="card-sub">50% spousal benefit</div></div>' +
     '<div class="card red"><div class="card-label">Total Trad 401k Drawn</div><div class="card-value">' + fmtK(tTrad) + '</div><div class="card-sub">First draw priority</div></div>' +
-    '<div class="card green"><div class="card-label">Total Roth IRA Drawn</div><div class="card-value">' + fmtK(tRoth) + '</div><div class="card-sub">Second draw priority</div></div>' +
-    '<div class="card red"><div class="card-label">Total Brokerage Drawn</div><div class="card-value">' + fmtK(tBrok) + '</div><div class="card-sub">Last draw priority</div></div>' +
+    '<div class="card green"><div class="card-label">Total Roth IRA Drawn</div><div class="card-value">' + fmtK(tRoth) + '</div><div class="card-sub">' + rothPriority + '</div></div>' +
+    '<div class="card red"><div class="card-label">Total Brokerage Drawn</div><div class="card-value">' + fmtK(tBrok) + '</div><div class="card-sub">' + brokPriority + '</div></div>' +
     '<div class="card green"><div class="card-label">HSA Drawn (Your Medicare)</div><div class="card-value">' + fmtK(tHSA) + '</div><div class="card-sub">Member only, tax-free</div></div>' +
     '<div class="card gold"><div class="card-label">Total Fed Taxes</div><div class="card-value">' + fmtK(tTax) + '</div><div class="card-sub">On taxable income</div></div>' +
     '<div class="card gold"><div class="card-label">Total All Taxes</div><div class="card-value">' + fmtK(tTax + tStateTax) + '</div><div class="card-sub">Fed + ' + stateLabel + ' combined</div></div>';
@@ -1225,6 +1268,12 @@ function renderAdvice(rows, INP) {
 }
 
 function runAll() {
+  // Highlight selected withdrawal option
+  var labelA = $('wd-opt-a-label'), labelB = $('wd-opt-b-label');
+  var isOptB = $('i_wd_order_b') && $('i_wd_order_b').checked;
+  if (labelA) labelA.style.border = isOptB ? '1px solid transparent' : '1px solid rgba(232,201,106,0.6)';
+  if (labelB) labelB.style.border = isOptB ? '1px solid rgba(232,201,106,0.6)' : '1px solid transparent';
+
   var result = calc();
   renderRoth(result.rows, result.INP);
   renderWithdrawal(result.rows, result.INP);
