@@ -383,7 +383,11 @@ tbody td.tax-cell  { color: var(--red); }
   <button class="tab-btn" onclick="showTab('roth',this)">Roth</button>
   <button class="tab-btn" onclick="showTab('withdrawal',this)">Withdraw</button>
   <button class="tab-btn" onclick="showTab('portfolio',this)">Portfolio</button>
+  <button class="tab-btn" onclick="showTab('rmd',this)">RMD</button>
   <button class="tab-btn" onclick="showTab('ss',this)">SS</button>
+  <button class="tab-btn" onclick="showTab('taxproj',this)">Tax</button>
+  <button class="tab-btn" onclick="showTab('montecarlo',this)">Risk</button>
+  <button class="tab-btn" onclick="showTab('survivor',this)">Survivor</button>
   <button class="tab-btn" onclick="showTab('advice',this)">Advice</button>
 </div>
 
@@ -392,7 +396,8 @@ tbody td.tax-cell  { color: var(--red); }
   <div class="section-title collapsible" onclick="toggleSection(this)">Your Details</div>
   <div class="collapsible-body">
   <div class="input-grid">
-    <div class="input-row"><label>Your Age</label><input type="number" id="i_age" value="63"></div>
+    <div class="input-row"><label>Your Date of Birth</label><input type="date" id="i_dob" value="1963-03-17" onchange="calcAgeFromDOB()" style="background:#1e2d45;color:#e8c96a;border:1px solid #3a5070;padding:6px;border-radius:4px;font-size:13px"></div>
+    <div class="input-row"><label>Your Age <span style="color:#7a8fa0;font-size:10px">(auto)</span></label><input type="number" id="i_age" value="63" style="background:#2a3f5a;color:#a0b4c8" readonly></div>
     <div class="input-row"><label>Retirement Age</label><input type="number" id="i_ret" value="65"></div>
     <div class="input-row"><label>Life Expectancy</label><input type="number" id="i_life" value="85"></div>
     <div class="input-row"><label>State of Residence</label>
@@ -462,33 +467,35 @@ tbody td.tax-cell  { color: var(--red); }
   </div><!-- end input-grid -->
   </div><!-- end collapsible-body: Your Details -->
 
-  <div class="section-title collapsible" onclick="toggleSection(this)">Spouse Details</div>
+  <div class="section-title collapsible" onclick="toggleSection(this)">Wife Details</div>
   <div class="collapsible-body">
   <div class="input-grid">
-    <div class="input-row"><label>Spouse Age</label><input type="number" id="i_sp_age" value="55"></div>
-    <div class="input-row"><label>Spouse Retirement Age</label><input type="number" id="i_sp_ret" value="65"></div>
-    <div class="input-row"><label>Spouse Salary ($)</label><input type="number" id="i_sp_salary" value="0"></div>
-    <div class="input-row"><label>Spouse 401k Balance ($)</label><input type="number" id="i_sp_401k" value="0"></div>
-    <div class="input-row"><label>Spouse 401k Contribution ($)</label><input type="number" id="i_sp_contrib" value="0"></div>
-    <div class="input-row"><label>Spouse Match Rate (%)</label><input type="number" id="i_sp_match_rate" value="0"></div>
-    <div class="input-row"><label>Spouse Trad IRA ($)</label><input type="number" id="i_trad_sp" value="76000"></div>
-    <div class="input-row"><label>Spouse Roth IRA ($)</label><input type="number" id="i_roth_sp" value="11000"></div>
+    <div class="input-row"><label>Wife Date of Birth</label><input type="date" id="i_sp_dob" value="1971-01-16" onchange="calcAgeFromDOB()" style="background:#1e2d45;color:#e8c96a;border:1px solid #3a5070;padding:6px;border-radius:4px;font-size:13px"></div>
+    <div class="input-row"><label>Wife Age <span style="color:#7a8fa0;font-size:10px">(auto)</span></label><input type="number" id="i_sp_age" value="55" style="background:#2a3f5a;color:#a0b4c8" readonly></div>
+    <div class="input-row"><label>Wife Retirement Age</label><input type="number" id="i_sp_ret" value="65"></div>
+    <div class="input-row"><label>Wife Salary ($)</label><input type="number" id="i_sp_salary" value="0"></div>
+    <div class="input-row"><label>Wife 401k Balance ($)</label><input type="number" id="i_sp_401k" value="0"></div>
+    <div class="input-row"><label>Wife 401k Contribution ($)</label><input type="number" id="i_sp_contrib" value="0"></div>
+    <div class="input-row"><label>Wife Match Rate (%)</label><input type="number" id="i_sp_match_rate" value="0"></div>
+    <div class="input-row"><label>Wife Trad IRA ($)</label><input type="number" id="i_trad_sp" value="76000"></div>
+    <div class="input-row"><label>Wife Roth IRA ($)</label><input type="number" id="i_roth_sp" value="11000"></div>
   </div><!-- end input-grid -->
-  <div class="note" style="margin-bottom:8px">If Spouse Salary is $0, she is treated as a <strong>non-working spouse</strong> — spousal SS benefit (50% of your FRA benefit) applies and no 401k contributions are added. If salary &gt; $0, her income and contributions are included in portfolio growth and joint MAGI (affects IRMAA).</div>
-  </div><!-- end collapsible-body: Spouse Details -->
+  <div class="note" style="margin-bottom:8px">If Wife Salary is $0, she is treated as a <strong>non-working wife</strong> — wife SS benefit (50% of your FRA benefit) applies and no 401k contributions are added. If salary &gt; $0, her income and contributions are included in portfolio growth and joint MAGI (affects IRMAA).</div>
+  </div><!-- end collapsible-body: Wife Details -->
 
   <div class="section-title collapsible" onclick="toggleSection(this)">Growth &amp; Social Security</div>
   <div class="collapsible-body">
   <div class="input-grid">
     <div class="input-row"><label>Investment Growth Rate (%)</label><input type="number" id="i_growth" value="8" step="0.1"></div>
     <div class="input-row"><label>Inflation Rate (%)</label><input type="number" id="i_infl" value="3" step="0.1"></div>
+    <div class="input-row"><label>SS COLA Rate (%)</label><input type="number" id="i_ss_cola" value="2.5" step="0.1" min="0" max="6"></div>
     <div class="input-row"><label>SS Monthly @ Age 65 ($)</label><input type="number" id="i_ss65" value="3330"></div>
     <div class="input-row"><label>SS Monthly @ Age 67 ($)</label><input type="number" id="i_ss67" value="3972"></div>
     <div class="input-row"><label>SS Monthly @ Age 70 ($)</label><input type="number" id="i_ss70" value="5200"></div>
     <div class="input-row"><label>SS Start Age (65/67/70)</label><input type="number" id="i_ss_age" value="67"></div>
-    <div class="input-row"><label>Spouse SS Start Age</label><input type="number" id="i_sp_ss_age" value="65"></div>
+    <div class="input-row"><label>Wife SS Start Age</label><input type="number" id="i_sp_ss_age" value="65"></div>
   </div><!-- end input-grid -->
-  <div class="note" style="margin-bottom:8px">Spouse SS is calculated as 50% of your FRA benefit (age-67 amount), reduced for each month claimed before her FRA (age 67). A non-working spouse cannot earn more than this spousal benefit.</div>
+  <div class="note" style="margin-bottom:8px">Wife SS is calculated as 50% of your FRA benefit (age-67 amount), reduced for each month claimed before her FRA (age 67). A non-working wife cannot earn more than this spousal benefit. &middot; <strong>SS COLA</strong>: SS benefit grows each year by the COLA rate starting from the first year benefits are received. SSA historical average is ~2.5%.</div>
   </div><!-- end collapsible-body: Growth & SS -->
 
   <div class="section-title collapsible" onclick="toggleSection(this)">Expenses</div>
@@ -499,7 +506,8 @@ tbody td.tax-cell  { color: var(--red); }
     <div class="input-row"><label>Property Tax Annual ($)</label><input type="number" id="i_prop_tax" value="13500"></div>
     <div class="input-row"><label>Home Insurance Annual ($)</label><input type="number" id="i_home_ins" value="1500"></div>
     <div class="input-row"><label>Medicare Part B / mo ($)</label><input type="number" id="i_medicare" value="185"></div>
-    <div class="input-row"><label>Spouse Private Ins / mo ($) (pre-65)</label><input type="number" id="i_sp_ins" value="800"></div>
+    <div class="input-row"><label>Medicare Inflation Rate (%)</label><input type="number" id="i_med_infl" value="5.0" step="0.1" min="0" max="10"></div>
+    <div class="input-row"><label>Wife Private Ins / mo ($) (pre-65)</label><input type="number" id="i_sp_ins" value="800"></div>
   </div><!-- end input-grid -->
   </div><!-- end collapsible-body: Expenses -->
 
@@ -557,7 +565,7 @@ tbody td.tax-cell  { color: var(--red); }
   <button class="calc-btn" onclick="runAll()">CALCULATE ALL TABS</button>
 
   <div class="note">
-    <strong>How to use:</strong> Edit any value above then tap <em>Calculate All Tabs</em>. All five tabs update instantly. Property tax, home insurance, living expenses, and spouse insurance all grow at the inflation rate each year.
+    <strong>How to use:</strong> Edit any value above then tap <em>Calculate All Tabs</em>. All five tabs update instantly. Property tax, home insurance, living expenses, and wife insurance all grow at the inflation rate each year.
   </div>
 </div>
 
@@ -583,14 +591,14 @@ tbody td.tax-cell  { color: var(--red); }
 <div id="tab-withdrawal" class="panel">
   <div id="wd-summary" class="cards"></div>
   <div class="section-title">Annual Withdrawal Plan</div>
-  <div id="wd-note" class="note">Withdrawal order: Trad 401k/IRA first &rarr; Roth IRA (yours + spouse combined) &rarr; Brokerage &middot; HSA pays <strong>member Medicare only</strong> (spouse Medicare from withdrawals) &middot; Spouse moves to Medicare at age 65 &middot; <strong>NJ:</strong> SS exempt, $100k retirement income exclusion (MFJ 62+) &middot; <strong>Avoid IRMAA</strong> checkbox caps conversions so MAGI ≤ $206k (MFJ) &middot; State Tax = NJ rules or flat rate × (conv + Trad draw)</div>
+  <div id="wd-note" class="note">Withdrawal order: Trad 401k/IRA first &rarr; Roth IRA (yours + wife combined) &rarr; Brokerage &middot; HSA pays <strong>member Medicare only</strong> (wife Medicare from withdrawals) &middot; Wife moves to Medicare at age 65 &middot; <strong>NJ:</strong> SS exempt, $100k retirement income exclusion (MFJ 62+) &middot; <strong>Avoid IRMAA</strong> checkbox caps conversions so MAGI ≤ $206k (MFJ) &middot; State Tax = NJ rules or flat rate × (conv + Trad draw)</div>
   <div class="tbl-wrap">
     <table>
       <thead><tr>
         <th>Age</th>
         <th>Living (+infl)</th><th>Mortgage</th><th>Prop Tax+Ins</th>
-        <th>Spouse Ins</th><th>Medicare+IRMAA</th>
-        <th>Total Needs</th><th>Your SS</th><th>Spouse SS</th>
+        <th>Wife Ins</th><th>Medicare+IRMAA</th>
+        <th>Total Needs</th><th>Your SS</th><th>Wife SS</th>
         <th>Trad 401k Draw</th><th>Roth IRA Draw</th><th>Brokerage Draw</th><th>HSA Draw</th>
         <th>Fed Tax</th><th>State Tax</th><th>IRMAA</th>
         <th>Net Surplus</th>
@@ -608,10 +616,10 @@ tbody td.tax-cell  { color: var(--red); }
     <table>
       <thead><tr>
         <th>Age</th><th>Trad 401k</th><th>Your Roth 401k+IRA</th>
-        <th>Spouse Roth IRA</th><th>Spouse Trad (IRA+401k)</th><th>HSA</th><th>Brokerage</th>
+        <th>Wife Roth IRA</th><th>Wife Trad (IRA+401k)</th><th>HSA</th><th>Brokerage</th>
         <th>Total Portfolio</th><th>Net Worth +Home</th>
       </tr></thead>
-      <caption style="caption-side:bottom;font-size:11px;color:#888;padding:4px 0">Your Roth + Spouse Roth are treated as one combined pool for withdrawal sequencing</caption>
+      <caption style="caption-side:bottom;font-size:11px;color:#888;padding:4px 0">Your Roth + Wife Roth are treated as one combined pool for withdrawal sequencing</caption>
       <tbody id="pg-body"></tbody>
     </table>
   </div>
@@ -635,6 +643,69 @@ tbody td.tax-cell  { color: var(--red); }
   <div id="ss-verdict" class="note" style="margin-top:12px"></div>
 </div>
 
+<!-- RMD -->
+<div id="tab-rmd" class="panel">
+  <div id="rmd-summary" class="cards"></div>
+  <div class="section-title">Required Minimum Distributions (IRS Uniform Lifetime Table)</div>
+  <div class="note">RMDs begin at age <span id="rmd-start-age">73</span>. You must withdraw at least the RMD amount each year from Traditional 401k/IRA — excess above RMD can still be converted to Roth. RMD = Prior Dec 31 balance ÷ IRS Life Expectancy Factor.</div>
+  <div class="tbl-wrap"><table>
+    <thead><tr>
+      <th>Age</th><th>Trad Bal (Jan 1)</th><th>IRS Factor</th><th>RMD Required</th>
+      <th>Conv Done</th><th>Extra Conv</th><th>Total Trad Draw</th>
+      <th>Fed Tax on RMD</th><th>State Tax</th><th>Net After Tax</th>
+    </tr></thead>
+    <tbody id="rmd-body"></tbody>
+  </table></div>
+</div>
+
+<!-- TAX PROJECTION -->
+<div id="tab-taxproj" class="panel">
+  <div class="section-title">Annual Tax Projection</div>
+  <div class="note">Select a year to see a full tax return simulation for that age. Shows AGI, deductions, taxable income, marginal rate, effective rate, IRMAA tier, and NJ state tax breakdown.</div>
+  <div style="display:flex;align-items:center;gap:12px;margin:12px 0">
+    <label style="color:#c0cfe0;font-size:12px">Select Age:</label>
+    <select id="tax_age_sel" onchange="renderTaxProj(window._lastRows, window._lastINP)" style="background:#1e2d45;color:#e8c96a;border:1px solid #3a5070;padding:6px 10px;border-radius:4px;font-size:13px"></select>
+  </div>
+  <div id="taxproj-content"></div>
+</div>
+
+<!-- MONTE CARLO -->
+<div id="tab-montecarlo" class="panel">
+  <div id="mc-summary" class="cards"></div>
+  <div class="section-title">Portfolio Survival — Monte Carlo Stress Test (500 simulations)</div>
+  <div class="note">Uses your inputs but randomises annual returns (mean = your growth rate, std dev = 12% for stocks). Shows probability of portfolio surviving to each age and the range of outcomes.</div>
+  <div id="mc-chart" style="margin:16px 0"></div>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Age</th><th>Median Portfolio</th><th>10th Pctile (Bear)</th><th>90th Pctile (Bull)</th><th>% Surviving</th></tr></thead>
+    <tbody id="mc-body"></tbody>
+  </table></div>
+</div>
+
+<!-- SURVIVOR -->
+<div id="tab-survivor" class="panel">
+  <div id="surv-summary" class="cards"></div>
+  <div class="section-title">Survivor Scenario — If Wife Passes First</div>
+  <div class="note">Models the financial impact if wife predeceases you. Filing status changes to Single, tax brackets compress, SS changes to survivor benefit (your higher benefit only). Expenses reduced by estimated spouse share.</div>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;margin:12px 0;align-items:center">
+    <div style="display:flex;align-items:center;gap:8px">
+      <label style="color:#c0cfe0;font-size:12px">Wife passes at age:</label>
+      <input type="number" id="surv_sp_age" value="75" min="60" max="95" style="width:70px;background:#1e2d45;color:#e8c96a;border:1px solid #3a5070;padding:6px;border-radius:4px;font-size:13px" oninput="renderSurvivor(window._lastRows, window._lastINP)">
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <label style="color:#c0cfe0;font-size:12px">Expense reduction after:</label>
+      <input type="number" id="surv_exp_pct" value="20" min="0" max="50" style="width:70px;background:#1e2d45;color:#e8c96a;border:1px solid #3a5070;padding:6px;border-radius:4px;font-size:13px" oninput="renderSurvivor(window._lastRows, window._lastINP)">
+      <span style="color:#a0b4c8;font-size:12px">%</span>
+    </div>
+  </div>
+  <div class="tbl-wrap"><table>
+    <thead><tr>
+      <th>Age</th><th>Filing Status</th><th>SS Income</th><th>Fed Tax</th><th>State Tax</th>
+      <th>Living Exp</th><th>Total Needs</th><th>Trad Draw</th><th>Roth Draw</th><th>Brok Draw</th><th>Portfolio</th>
+    </tr></thead>
+    <tbody id="surv-body"></tbody>
+  </table></div>
+</div>
+
 <!-- ADVICE -->
 <div id="tab-advice" class="panel">
   <div class="section-title">Strategic Recommendations</div>
@@ -653,7 +724,7 @@ tbody td.tax-cell  { color: var(--red); }
         <tr><td style="text-align:left">$386,001 – $750,000</td><td>$4,490/yr</td><td style="text-align:left">+$374/mo per person</td></tr>
         <tr><td style="text-align:left">Over $750,000</td><td>$5,330/yr</td><td style="text-align:left">+$444/mo per person</td></tr>
       </tbody>
-      <caption style="caption-side:bottom;font-size:11px;color:#888;padding:4px 0">Both spouses on Medicare each pay the surcharge — shown per person. Joint household cost is 2×.</caption>
+      <caption style="caption-side:bottom;font-size:11px;color:#888;padding:4px 0">Both on Medicare each pay the surcharge — shown per person. Joint household cost is 2×.</caption>
     </table>
   </div>
   <div class="note" style="margin-top:12px">
@@ -696,6 +767,23 @@ function fmtK(n) {
 }
 function pct(n) { return (n*100).toFixed(1) + '%'; }
 function v(id) { return parseFloat($(id).value) || 0; }
+
+function calcAgeFromDOB() {
+  var today = new Date();
+  function ageFrom(dobId, ageId) {
+    var el = $(dobId);
+    if (!el || !el.value) return;
+    var dob = new Date(el.value);
+    var age = today.getFullYear() - dob.getFullYear();
+    var m = today.getMonth() - dob.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+    var ageEl = $(ageId);
+    if (ageEl) ageEl.value = age;
+  }
+  ageFrom('i_dob', 'i_age');
+  ageFrom('i_sp_dob', 'i_sp_age');
+  runAll();
+}
 
 function toggleSection(titleEl) {
   var body = titleEl.nextElementSibling;
@@ -740,6 +828,14 @@ function irmaa(magi) {
 //   - Traditional IRA/401k withdrawals (tradDraw) exempt up to $100,000/yr (NJ retirement exclusion, MFJ)
 //   - Roth CONVERSIONS are taxable in NJ (treated as ordinary income, no exclusion)
 // Other states: flat rate on (ss_taxable + conv + tradDraw)
+// IRS Uniform Lifetime Table 2022 (age → distribution period)
+var IRS_ULT = {
+  72:27.4,73:26.5,74:25.5,75:24.6,76:23.7,77:22.9,78:22.0,79:21.1,
+  80:20.2,81:19.4,82:18.5,83:17.7,84:16.8,85:16.0,86:15.2,87:14.4,
+  88:13.7,89:12.9,90:12.2,91:11.5,92:10.8,93:10.1,94:9.5,95:8.9,
+  96:8.4,97:7.8,98:7.3,99:6.8,100:6.4
+};
+
 function calcStateTax(INP, age, ss_taxable, convAmt, tradDrawAmt) {
   if (INP.state === 'NJ') {
     // Conv taxable in full; tradDraw gets $100k exclusion for age 62+
@@ -792,6 +888,8 @@ function calc() {
     ss_taxable_pct:  v('i_ss_taxable_pct') / 100,
     rmd_age:         v('i_rmd_age') || 73,
     ltcg_rate:       v('i_ltcg_rate') / 100,
+    ss_cola:         (v('i_ss_cola') || 2.5) / 100,
+    med_infl:        (v('i_med_infl') || 5.0) / 100,
     avoid_irmaa:     !!($('i_avoid_irmaa') && $('i_avoid_irmaa').checked),
     wd_order:        ($('i_wd_order_b') && $('i_wd_order_b').checked) ? 'brok_roth' : 'roth_brok'
   };
@@ -812,12 +910,14 @@ function calc() {
   var spWorking0  = INP.sp_salary > 0 && INP.sp_age < INP.sp_ret;
   var spContrib0  = spWorking0 ? (INP.sp_contrib + INP.sp_salary * INP.sp_match) : 0;
 
-  var trad     = (INP.trad401k + INP.contrib + INP.salary * INP.match) * (1 + INP.growth);
-  var roth     = (INP.roth401k + INP.roth_ira) * (1 + INP.growth);
-  var rothSp   = INP.roth_sp * (1 + INP.growth);
-  var tradSp   = (INP.trad_sp + INP.sp_401k + spContrib0) * (1 + INP.growth);
-  var hsa      = (INP.hsa + INP.hsa_c) * (1 + INP.growth);
-  var brok     = INP.brok * (1 + INP.growth);
+  // Seed balances: apply one year of growth+contributions to represent end of current year
+  // (loop starts at age+1, so first row shown is already one year ahead)
+  var trad   = (INP.trad401k + INP.contrib + INP.salary * INP.match) * (1 + INP.growth);
+  var roth   = (INP.roth401k + INP.roth_ira) * (1 + INP.growth);
+  var rothSp = INP.roth_sp * (1 + INP.growth);
+  var tradSp = (INP.trad_sp + INP.sp_401k + spContrib0) * (1 + INP.growth);
+  var hsa    = (INP.hsa + INP.hsa_c) * (1 + INP.growth);
+  var brok   = INP.brok * (1 + INP.growth);
   var magiQ    = [INP.salary + INP.sp_salary, INP.salary + INP.sp_salary];
 
   var rows = [];
@@ -826,7 +926,7 @@ function calc() {
   for (var i = 0; i < numYears; i++) {
     var age   = INP.age + 1 + i;                    // start one year ahead of current age
     var inflF = Math.pow(1 + INP.infl, i);
-    var isWorking = INP.salary > 0 && age <= INP.ret;
+    var isWorking = INP.salary > 0 && age < INP.ret;
     var isRMD     = !isWorking && age >= INP.rmd_age;
 
     var spouseAge     = INP.sp_age + (age - INP.age);
@@ -864,13 +964,17 @@ function calc() {
 
     } else {
       // ── RETIREMENT YEAR: conversions, withdrawals, taxes ──
-      var ss         = age >= INP.ss_age ? ss_yr : 0;
-      var sp_ss      = spouseAge >= INP.sp_ss_age ? sp_ss_yr : 0;
+      var ss_cola_yrs = age >= INP.ss_age ? (age - INP.ss_age) : 0;
+      var ss         = age >= INP.ss_age ? ss_yr * Math.pow(1 + INP.ss_cola, ss_cola_yrs) : 0;
+      var sp_cola_yrs = spouseAge >= INP.sp_ss_age ? (spouseAge - INP.sp_ss_age) : 0;
+      var sp_ss      = spouseAge >= INP.sp_ss_age ? sp_ss_yr * Math.pow(1 + INP.ss_cola, sp_cola_yrs) : 0;
       var totalSS    = ss + sp_ss;
       var ss_taxable = totalSS * INP.ss_taxable_pct;
 
       var conv         = isRMD ? 0 : Math.max(0, Math.min(trad, INP.conv_tgt - ss_taxable));
-      // IRMAA avoidance: cap conversion so MAGI (used 2 yrs later) stays at/below $206k MFJ threshold
+      // IRMAA avoidance: cap conv so that projected MAGI (ss_taxable + conv) stays below $206k.
+      // This is meaningful once SS starts pushing ss_taxable high enough to matter.
+      // The 2-yr lookback means THIS year's MAGI drives IRMAA at age+2.
       if (INP.avoid_irmaa && !isRMD) {
         var irmaaFreeCap = Math.max(0, 206000 - ss_taxable);
         conv = Math.min(conv, irmaaFreeCap);
@@ -882,8 +986,9 @@ function calc() {
       var propIns    = (INP.prop_tax + INP.home_ins) * inflF;
       var priorMAGI  = magiQ[0];
       var irmaaYr    = age >= 65 ? irmaa(priorMAGI) : 0;
-      var medicareYr = age >= 65 ? INP.medicare * 12 + irmaaYr : 0;
-      var spMedicareYr = spouseAge >= 65 ? INP.medicare * 12 + irmaa(priorMAGI) : 0;
+      var medInflF   = Math.pow(1 + INP.med_infl, i);
+      var medicareYr = age >= 65 ? INP.medicare * 12 * medInflF + irmaaYr : 0;
+      var spMedicareYr = spouseAge >= 65 ? INP.medicare * 12 * medInflF + irmaa(priorMAGI) : 0;
       var spIns        = spouseAge >= 65 ? 0 : INP.sp_ins * 12 * inflF;
       var totalMedicare = medicareYr + spMedicareYr;
       var totalNeeds = living + housing + propIns + spIns + totalMedicare;
@@ -920,33 +1025,71 @@ function calc() {
       }
       var livingFromTrad = Math.max(0, livingGap - rothDraw - brokDraw);
 
-      // Step 2: trad covers (a) living gap remainder + (b) tax bill on ss+conv+tradDraw
-      // tradDraw is taxable so iterate once to converge taxes
-      var tradDraw = livingFromTrad;
+      // Step 2: trad covers (a) any living expense gap + (b) tax bill
+      // tradDraw is itself taxable — converge in 3 passes
+      var tradAvail = Math.max(0, trad - conv);
+
+      // RMD: compute required minimum distribution — tradDraw must be at least this amount
+      var rmdFactor   = isRMD ? (IRS_ULT[age] || IRS_ULT[Math.min(age, 100)]) : 0;
+      var rmdRequired = isRMD && rmdFactor > 0 ? trad / rmdFactor : 0;
+
+      // When avoid_irmaa is set, cap total IRMAA-MAGI = ss_taxable + conv + tradDraw ≤ 206k
+      // Note: IRMAA uses taxable SS (85%), not gross SS. Does not apply during RMD years.
+      var tradMAGICap = INP.avoid_irmaa && !isRMD
+        ? Math.max(0, 206000 - ss_taxable - conv)
+        : Infinity;
+
+      // tradDraw must be at least rmdRequired (RMD years), and cover living gap + taxes
+      var tradMin  = rmdRequired;   // enforce RMD floor
+      var tradDraw = Math.max(tradMin, Math.min(tradAvail, tradMAGICap, livingFromTrad));
       var ft       = fedTax(ss_taxable + conv + tradDraw);
       var stateTax = calcStateTax(INP, age, ss_taxable, conv, tradDraw);
-      // One correction pass: taxes increase tradDraw → recompute
-      tradDraw = livingFromTrad + ft + stateTax;
-      tradDraw = Math.min(Math.max(0, trad - conv), tradDraw);
-      ft       = fedTax(ss_taxable + conv + tradDraw);
-      stateTax = calcStateTax(INP, age, ss_taxable, conv, tradDraw);
-      // Final trad draw capped at available
-      tradDraw = Math.min(Math.max(0, trad - conv), livingFromTrad + ft + stateTax);
-      ft       = fedTax(ss_taxable + conv + tradDraw);
-      stateTax = calcStateTax(INP, age, ss_taxable, conv, tradDraw);
+      tradDraw     = Math.max(tradMin, Math.min(tradAvail, tradMAGICap, livingFromTrad + ft + stateTax));
+      ft           = fedTax(ss_taxable + conv + tradDraw);
+      stateTax     = calcStateTax(INP, age, ss_taxable, conv, tradDraw);
+      tradDraw     = Math.max(tradMin, Math.min(tradAvail, tradMAGICap, livingFromTrad + ft + stateTax));
+      ft           = fedTax(ss_taxable + conv + tradDraw);
+      stateTax     = calcStateTax(INP, age, ss_taxable, conv, tradDraw);
+
+      // Step 3: if trad can't cover full cash needed (capped by MAGI limit, RMD, or depleted),
+      // spill remainder to Roth/Brokerage in chosen order (tax-free — don't affect MAGI)
+      var cashGap = Math.max(0, totalNeeds + ft + stateTax - totalSS - hsaPay - tradDraw - rothDraw - brokDraw);
+      if (cashGap > 0) {
+        var remRoth = Math.max(0, rothTotal - rothDraw);
+        var remBrok = Math.max(0, brok - brokDraw);
+        if (optB) {
+          var eb = Math.min(remBrok, cashGap); brokDraw += eb;
+          var er = Math.min(remRoth, cashGap - eb); rothDraw += er;
+        } else {
+          var er = Math.min(remRoth, cashGap); rothDraw += er;
+          var eb = Math.min(remBrok, cashGap - er); brokDraw += eb;
+        }
+      }
+
+      // RMD excess: mandatory RMD > expenses+taxes → surplus cash reinvested to brokerage
+      var rmdExcess = 0;
+      if (isRMD) {
+        var totalOut = totalNeeds + ft + stateTax;
+        var totalIn  = totalSS + hsaPay + tradDraw + rothDraw + brokDraw;
+        rmdExcess = Math.max(0, totalIn - totalOut);
+        brok += rmdExcess;   // reinvest excess RMD proceeds into brokerage immediately
+      }
 
       rothDraw_me = rothTotal > 0 ? rothDraw * (roth + conv) / rothTotal : 0;
       rothDraw_sp = rothTotal > 0 ? rothDraw * rothSp / rothTotal : 0;
 
       var totalTaxable = ss_taxable + conv + tradDraw;
       var stateTaxBase = conv + tradDraw;
-      var surplus  = totalSS + rothDraw + brokDraw + tradDraw + hsaPay - totalNeeds - ft - stateTax;
+
+      // Surplus = net cash after all obligations (should be ~0 in normal years)
+      // RMD excess is reinvested to brokerage so shows as 0 surplus
+      var surplus = totalSS + hsaPay + tradDraw + rothDraw + brokDraw - totalNeeds - ft - stateTax - rmdExcess;
 
       var tradEnd  = Math.max(0, (trad - conv - tradDraw)) * (1 + INP.growth);
       var newRoth  = Math.max(0, (roth + conv - rothDraw_me)) * (1 + INP.growth);
       var newRothSp= Math.max(0, (rothSp - rothDraw_sp)) * (1 + INP.growth);
       var newHSA   = Math.max(0, hsa - hsaPay) * (1 + INP.growth);
-      var newBrok  = Math.max(0, brok - brokDraw) * (1 + INP.growth);
+      var newBrok  = Math.max(0, brok - brokDraw) * (1 + INP.growth);   // brok already includes rmdExcess reinvestment
       var totalPort= tradEnd + newRoth + newRothSp + newTradSp + newHSA + newBrok;
 
       rows.push({
@@ -961,10 +1104,13 @@ function calc() {
         stateTax: stateTax, stateTaxBase: stateTaxBase,
         tradBal: tradEnd, rothBal: newRoth, rothSpBal: newRothSp, tradSpBal: newTradSp,
         hsaBal: newHSA, brokBal: newBrok, totalPort: totalPort,
-        netWorth: totalPort + 650000
+        netWorth: totalPort + 650000,
+        rmdRequired: rmdRequired, rmdFactor: rmdFactor, rmdExcess: rmdExcess
       });
 
-      magiQ.push(totalSS + conv + (spouseWorking ? INP.sp_salary : 0)); magiQ.shift();
+      // IRMAA MAGI = taxable portion of SS + conv + tradDraw (NOT gross SS)
+      var irmaa_magi = ss_taxable + conv + tradDraw + (spouseWorking ? INP.sp_salary : 0);
+      magiQ.push(irmaa_magi); magiQ.shift();
       trad = tradEnd; roth = newRoth; rothSp = newRothSp; tradSp = newTradSp;
       hsa = newHSA; brok = newBrok;
     }
@@ -1032,22 +1178,22 @@ function renderWithdrawal(rows, INP) {
   var stateLabel = INP ? INP.state : 'State';
   var isOptB = INP && INP.wd_order === 'brok_roth';
   var orderLabel = isOptB
-    ? 'Trad 401k/IRA first &rarr; Brokerage &rarr; Roth IRA (yours + spouse combined)'
-    : 'Trad 401k/IRA first &rarr; Roth IRA (yours + spouse combined) &rarr; Brokerage';
+    ? 'Trad 401k/IRA first &rarr; Brokerage &rarr; Roth IRA (yours + wife combined)'
+    : 'Trad 401k/IRA first &rarr; Roth IRA (yours + wife combined) &rarr; Brokerage';
   var rothPriority  = isOptB ? 'Last draw priority'   : 'Second draw priority';
   var brokPriority  = isOptB ? 'Second draw priority' : 'Last draw priority';
 
   // Update the note in the Withdraw tab
   var wdNote = $('wd-note');
   if (wdNote) wdNote.innerHTML = '<strong>Withdrawal order:</strong> ' + orderLabel +
-    ' &middot; HSA pays <strong>member Medicare only</strong> &middot; Spouse moves to Medicare at age 65' +
+    ' &middot; HSA pays <strong>member Medicare only</strong> &middot; Wife moves to Medicare at age 65' +
     ' &middot; <strong>NJ:</strong> SS exempt, $100k retirement income exclusion (MFJ 62+)' +
     ' &middot; <strong>Avoid IRMAA</strong> caps conversions so MAGI ≤ $206k (MFJ)' +
     ' &middot; State Tax = NJ rules or flat rate × (conv + Trad draw)';
 
   $('wd-summary').innerHTML =
     '<div class="card gold"><div class="card-label">Your Total SS</div><div class="card-value">' + fmtK(tSS) + '</div><div class="card-sub">Ages 64-85</div></div>' +
-    '<div class="card gold"><div class="card-label">Spouse Total SS</div><div class="card-value">' + fmtK(tSpSS) + '</div><div class="card-sub">50% spousal benefit</div></div>' +
+    '<div class="card gold"><div class="card-label">Wife Total SS</div><div class="card-value">' + fmtK(tSpSS) + '</div><div class="card-sub">50% wife SS benefit</div></div>' +
     '<div class="card red"><div class="card-label">Total Trad 401k Drawn</div><div class="card-value">' + fmtK(tTrad) + '</div><div class="card-sub">First draw priority</div></div>' +
     '<div class="card green"><div class="card-label">Total Roth IRA Drawn</div><div class="card-value">' + fmtK(tRoth) + '</div><div class="card-sub">' + rothPriority + '</div></div>' +
     '<div class="card red"><div class="card-label">Total Brokerage Drawn</div><div class="card-value">' + fmtK(tBrok) + '</div><div class="card-sub">' + brokPriority + '</div></div>' +
@@ -1131,10 +1277,10 @@ function renderPortfolio(rows, INP) {
 
   var items = [
     ['Traditional 401k/IRA', last.tradBal, 'Taxable to heirs at ordinary rates (10-yr rule)', false],
-    ['Spouse Trad (IRA+401k)', last.tradSpBal, 'Taxable to heirs at ordinary rates (10-yr rule)', false],
+    ['Wife Trad (IRA+401k)', last.tradSpBal, 'Taxable to heirs at ordinary rates (10-yr rule)', false],
     ['Your Roth Accounts', last.rothBal, 'TAX-FREE to heirs - best asset to pass on', true],
-    ['Spouse Roth IRA', last.rothSpBal, 'TAX-FREE to heirs', true],
-    ['HSA Balance', last.hsaBal, 'Taxable to non-spouse heirs - use during lifetime', false],
+    ['Wife Roth IRA', last.rothSpBal, 'TAX-FREE to heirs', true],
+    ['HSA Balance', last.hsaBal, 'Taxable to non-wife heirs - use during lifetime', false],
     ['Brokerage', last.brokBal, 'Step-up basis at death - minimal cap gains tax', false],
     ['Home (estimated)', 650000, 'Subject to estate rules', false],
     ['TOTAL ESTATE', last.totalPort + 650000, 'All accounts + home', 'total']
@@ -1154,33 +1300,49 @@ function renderPortfolio(rows, INP) {
 }
 
 function renderSS(INP) {
+  var cola = INP.ss_cola || 0.025;
+  var lifeAge = INP.life || 85;
+
+  // Calculate COLA-adjusted lifetime SS for a given start age and monthly benefit
+  function ssLifetime(startAge, monthlyBase) {
+    var total = 0;
+    for (var a = startAge; a < lifeAge; a++) {
+      total += monthlyBase * 12 * Math.pow(1 + cola, a - startAge);
+    }
+    return total;
+  }
+
+  var lt65 = ssLifetime(65, INP.ss65);
+  var lt67 = ssLifetime(67, INP.ss67);
+  var lt70 = ssLifetime(70, INP.ss70);
+
   var options = [
-    { age: 65, monthly: INP.ss65, best: false },
-    { age: 67, monthly: INP.ss67, best: false },
-    { age: 70, monthly: INP.ss70, best: true }
+    { age: 65, monthly: INP.ss65, lifetime: lt65, best: false },
+    { age: 67, monthly: INP.ss67, lifetime: lt67, best: false },
+    { age: 70, monthly: INP.ss70, lifetime: lt70, best: true }
   ];
   var html = '';
   for (var i=0;i<options.length;i++) {
     var o = options[i];
     var annual = o.monthly * 12;
-    var years = 85 - o.age;
-    var lifetime = annual * years;
     html += '<div class="ss-card ' + (o.best?'best':'') + '">' +
       '<div class="ss-age">' + o.age + '</div>' +
       '<div class="ss-monthly">' + fmt(o.monthly) + '/mo</div>' +
-      '<div class="ss-annual">' + fmt(annual) + '/yr</div>' +
-      '<div class="ss-lifetime">To age 85:<span>' + fmtK(lifetime) + '</span></div>' +
+      '<div class="ss-annual">' + fmt(annual) + '/yr <span style="font-size:9px;color:#888">(yr 1)</span></div>' +
+      '<div class="ss-lifetime">To age ' + lifeAge + ' w/COLA:<span>' + fmtK(o.lifetime) + '</span></div>' +
       (o.best ? '<div class="best-badge">RECOMMENDED</div>' : '') +
       (o.age===67 ? '<div class="best-badge" style="background:#4a7c6f;color:#fff">GOOD</div>' : '') +
       '</div>';
   }
   $('ss-cards').innerHTML = html;
 
+  var yrs65 = lifeAge - 65, yrs67 = lifeAge - 67, yrs70 = lifeAge - 70;
   var rows = [
-    ['Monthly Benefit', fmt(INP.ss65), fmt(INP.ss67), fmt(INP.ss70)],
-    ['Annual Benefit', fmt(INP.ss65*12), fmt(INP.ss67*12), fmt(INP.ss70*12)],
-    ['Years Collecting to 85', '20', '18', '15'],
-    ['Total Lifetime to 85', fmtK(INP.ss65*12*20), fmtK(INP.ss67*12*18), fmtK(INP.ss70*12*15)],
+    ['Monthly Benefit (Year 1)', fmt(INP.ss65), fmt(INP.ss67), fmt(INP.ss70)],
+    ['Annual Benefit (Year 1)', fmt(INP.ss65*12), fmt(INP.ss67*12), fmt(INP.ss70*12)],
+    ['COLA Rate Applied', (cola*100).toFixed(1)+'%/yr', (cola*100).toFixed(1)+'%/yr', (cola*100).toFixed(1)+'%/yr'],
+    ['Years Collecting to ' + lifeAge, yrs65.toString(), yrs67.toString(), yrs70.toString()],
+    ['Lifetime Total to ' + lifeAge + ' (w/COLA)', fmtK(lt65), fmtK(lt67), fmtK(lt70)],
     ['Annual Taxable (85%)', fmt(INP.ss65*12*0.85), fmt(INP.ss67*12*0.85), fmt(INP.ss70*12*0.85)],
     ['IRMAA Impact', 'Least room', 'Less room', 'Least room for Roth conv'],
     ['Survivor Benefit', 'Lower', 'Higher', 'Highest']
@@ -1201,16 +1363,16 @@ function renderSS(INP) {
 
   $('ss-verdict').innerHTML =
     '<strong>Your SS: Recommendation to wait until age 70.</strong><br>' +
-    'Each year you delay past 67 adds ~8% permanently. At age 85: Age 70 pays <strong>' + fmtK(INP.ss70*12*15) +
-    '</strong> vs age 65 pays <strong>' + fmtK(INP.ss65*12*20) + '</strong> — a difference of <strong>' +
-    fmtK(INP.ss70*12*15 - INP.ss65*12*20) + '</strong>.<br><br>' +
-    '<strong>Spouse SS (non-working spousal benefit):</strong><br>' +
+    'Each year you delay past 67 adds ~8% permanently. With ' + (cola*100).toFixed(1) + '% COLA to age ' + lifeAge + ': Age 70 pays <strong>' + fmtK(lt70) +
+    '</strong> vs age 65 pays <strong>' + fmtK(lt65) + '</strong> — a difference of <strong>' +
+    fmtK(lt70 - lt65) + '</strong>.<br><br>' +
+    '<strong>Wife SS (non-working spousal benefit):</strong><br>' +
     'Benefit at FRA (67): <strong>' + fmt(sp_pia_mo) + '/mo</strong> (50% of your $' + Math.round(INP.ss67).toLocaleString() + ' PIA)<br>' +
     'Benefit at age ' + INP.sp_ss_age + ': <strong>' + fmt(sp_mo_benefit) + '/mo</strong>' +
     (sp_red > 0 ? ' (' + (sp_red*100).toFixed(1) + '% early-claim reduction)' : ' (at FRA, no reduction)') + '<br>' +
     'Spouse starts collecting when you are age <strong>' + primary_age_when_sp_ss + '</strong>. ' +
-    'Annual benefit: <strong>' + fmt(sp_mo_benefit * 12) + '/yr</strong>. ' +
-    'Note: spouse cannot collect SS until you have filed for your own benefit.';
+    'Annual benefit (yr 1): <strong>' + fmt(sp_mo_benefit * 12) + '/yr</strong>. ' +
+    'Note: wife cannot collect SS until you have filed for your own benefit.';
 }
 
 function renderAdvice(rows, INP) {
@@ -1227,11 +1389,13 @@ function renderAdvice(rows, INP) {
   if (cmpTitle) cmpTitle.textContent = stateName + ' vs Washington State Tax Impact';
 
   var items = [
-    ['WITHDRAWAL ORDER','1) Trad 401k/IRA first (depletes taxable account)  2) Roth IRA — yours + spouse combined  3) Brokerage last  4) Social Security offsets gap  5) HSA for your Medicare only (tax-free)','&#x1F3C6;'],
+    ['WITHDRAWAL ORDER', INP.wd_order === 'brok_roth'
+      ? '1) Trad 401k/IRA first  2) Brokerage  3) Roth IRA last (preserve for heirs)  4) SS offsets gap  5) HSA for your Medicare (tax-free)'
+      : '1) Trad 401k/IRA first  2) Roth IRA  3) Brokerage last  4) SS offsets gap  5) HSA for your Medicare (tax-free)','&#x1F3C6;'],
     ['ROTH CONVERSION STRATEGY','Convert Trad 401k during ages 64–' + (INP.rmd_age-1) + ' before RMDs. Model converts ' + fmtK(totalConv) + ' total, est. ' + fmtK(totalTax) + ' in federal taxes. Target: top of ' + (BRACKET_CEILINGS[$("i_target_bracket") ? $("i_target_bracket").value : "201050"] || 22) + '% bracket (' + fmt(INP.conv_tgt) + ').','&#x1F504;'],
-    ['SOCIAL SECURITY - WAIT TO 70','Every year you delay past 67 adds ~8% permanently. Spouse receives your higher benefit as survivor - critical since she is younger.','&#x1F3DB;'],
+    ['SOCIAL SECURITY - WAIT TO 70','Every year you delay past 67 adds ~8% permanently. Wife receives your higher benefit as survivor - critical since she is younger.','&#x1F3DB;'],
     ['RMDs BEGIN AT AGE ' + INP.rmd_age,'SECURE 2.0 Act: RMDs start at ' + INP.rmd_age + '. You have ' + (INP.rmd_age - 64) + ' years (ages 64–' + (INP.rmd_age-1) + ') to convert to Roth before RMDs force taxable withdrawals.','&#x1F4CB;'],
-    ['HSA STRATEGY','HSA covers your Medicare Part B + IRMAA surcharges only (IRS-qualified, tax-free). Spouse Medicare Part B is paid from regular withdrawals — not HSA-eligible on a separate account. Do NOT use HSA for spouse private insurance either.','&#x1F3E5;'],
+    ['HSA STRATEGY','HSA covers your Medicare Part B + IRMAA surcharges only (IRS-qualified, tax-free). Wife Medicare Part B is paid from regular withdrawals — not HSA-eligible on a separate account. Do NOT use HSA for spouse private insurance either.','&#x1F3E5;'],
     ['IRMAA WARNING','Roth conversion income (~$201k/yr) triggers IRMAA surcharges. Prior salary of $' + INP.salary.toLocaleString() + ' also affects ages 65-66 surcharges.','&#x26A0;'],
     ['ESTATE PLANNING','Roth accounts pass tax-free to your children (10-year rule). Every dollar converted now becomes a tax-free inheritance. Minimize Trad 401k balance by age 85.','&#x1F46A;'],
     ['PROPERTY COSTS','Mortgage, property tax ($' + INP.prop_tax.toLocaleString() + '/yr), and home insurance ($' + INP.home_ins.toLocaleString() + '/yr) all grow with inflation and are modeled as ongoing costs in the withdrawal plan.','&#x1F3E0;']
@@ -1267,6 +1431,271 @@ function renderAdvice(rows, INP) {
   $('wa-box').innerHTML = waHtml;
 }
 
+// ── RMD TAB ──────────────────────────────────────────────────────────────────
+function renderRMD(rows, INP) {
+  var rmdRows = rows.filter(function(r){ return r.isRMD; });
+  if (!rmdRows.length) { $('rmd-body').innerHTML = '<tr><td colspan="10" style="text-align:center;color:#888">No RMD years in model range</td></tr>'; return; }
+  var totalRMD = 0, totalTax = 0;
+  $('rmd-start-age').textContent = INP.rmd_age;
+
+  var tCards = 0, tTax = 0, tExtra = 0;
+  var tbody = '';
+  for (var i = 0; i < rmdRows.length; i++) {
+    var r = rmdRows[i];
+    var extraConv = Math.max(0, r.tradDraw - r.rmdRequired);
+    var netAfterTax = r.rmdRequired - (r.rmdRequired / Math.max(1, r.totalTaxable)) * (r.ft + r.stateTax);
+    tCards += r.rmdRequired; tTax += r.ft + r.stateTax; tExtra += extraConv;
+    tbody += '<tr class="rmd-row">' +
+      '<td>' + r.age + '</td>' +
+      '<td>' + fmt(r.tradStart) + '</td>' +
+      '<td>' + (r.rmdFactor || '—') + '</td>' +
+      '<td style="color:#e8c96a;font-weight:700">' + fmt(r.rmdRequired) + '</td>' +
+      '<td>' + fmt(r.conv) + '</td>' +
+      '<td>' + (extraConv > 0 ? fmt(extraConv) : '—') + '</td>' +
+      '<td>' + fmt(r.tradDraw + r.conv) + '</td>' +
+      '<td class="tax-cell">' + fmt(r.ft) + '</td>' +
+      '<td class="tax-cell">' + fmt(r.stateTax) + '</td>' +
+      '<td>' + fmt(Math.max(0, r.rmdRequired - r.ft - r.stateTax)) + '</td>' +
+      '</tr>';
+  }
+  $('rmd-body').innerHTML = tbody;
+  $('rmd-summary').innerHTML =
+    '<div class="card gold"><div class="card-label">Total RMDs Required</div><div class="card-value">' + fmtK(tCards) + '</div><div class="card-sub">Ages ' + INP.rmd_age + '–' + INP.life + '</div></div>' +
+    '<div class="card red"><div class="card-label">Total Tax on RMDs</div><div class="card-value">' + fmtK(tTax) + '</div><div class="card-sub">Fed + State</div></div>' +
+    '<div class="card green"><div class="card-label">Trad Bal at RMD Start</div><div class="card-value">' + fmtK(rmdRows[0].tradStart) + '</div><div class="card-sub">At age ' + INP.rmd_age + '</div></div>' +
+    '<div class="card gold"><div class="card-label">Trad Bal at Age ' + INP.life + '</div><div class="card-value">' + fmtK(rmdRows[rmdRows.length-1].tradBal) + '</div><div class="card-sub">Remaining taxable</div></div>';
+}
+
+// ── TAX PROJECTION TAB ────────────────────────────────────────────────────────
+function renderTaxProj(rows, INP) {
+  if (!rows || !INP) return;
+  window._lastRows = rows; window._lastINP = INP;
+  var sel = $('tax_age_sel');
+  // Populate selector if empty
+  if (sel && sel.options.length === 0) {
+    var retRows = rows.filter(function(r){ return !r.isWorking; });
+    for (var i = 0; i < retRows.length; i++) {
+      var o = document.createElement('option');
+      o.value = retRows[i].age; o.textContent = 'Age ' + retRows[i].age;
+      sel.appendChild(o);
+    }
+  }
+  var selAge = sel ? parseInt(sel.value) : (INP.rmd_age);
+  var r = rows.find(function(x){ return x.age === selAge && !x.isWorking; });
+  if (!r) { $('taxproj-content').innerHTML = '<div class="note">No data for selected age.</div>'; return; }
+
+  var agi = r.ss_income + r.sp_ss + r.conv + r.tradDraw;
+  var stdDed = INP.std_ded || 30000;
+  var taxableInc = Math.max(0, r.totalTaxable - stdDed);  // after std deduction (fed)
+  var margRate = r.totalTaxable > 487450 ? 37 : r.totalTaxable > 383900 ? 35 : r.totalTaxable > 201050 ? 24 : r.totalTaxable > 94300 ? 22 : r.totalTaxable > 23200 ? 12 : 10;
+  var effFed = r.totalTaxable > 0 ? (r.ft / r.totalTaxable * 100).toFixed(1) : '0.0';
+  var effState = r.totalTaxable > 0 ? (r.stateTax / r.totalTaxable * 100).toFixed(1) : '0.0';
+  var irmaaLabel = r.irmaaYr > 0 ? fmt(r.irmaaYr) + '/yr (' + fmt(r.irmaaYr/12) + '/mo)' : '$0 — below threshold';
+  var totalTax = r.ft + r.stateTax;
+  var effectiveAll = agi > 0 ? (totalTax / agi * 100).toFixed(1) : '0.0';
+
+  var rows2 = [
+    ['INCOME','',''],
+    ['Social Security (yours)', fmt(r.ss_income), ''],
+    ['Social Security (spouse)', fmt(r.sp_ss), ''],
+    ['Roth Conversion', fmt(r.conv), 'Taxable ordinary income'],
+    ['Trad 401k Draw (expenses)', fmt(r.tradDraw), 'Taxable ordinary income'],
+    ['Roth Draw', fmt(r.rothDraw), 'Tax-free — not in AGI'],
+    ['Brokerage Draw', fmt(r.brokDraw), 'Tax-free basis / LTCG'],
+    ['HSA Draw (Medicare)', fmt(r.hsaPay), 'Tax-free qualified expense'],
+    ['Gross Income (AGI)', fmt(agi), 'SS + Conv + Trad draws'],
+    ['DEDUCTIONS & TAXABLE','',''],
+    ['Standard Deduction (MFJ)', fmt(stdDed), '2024 MFJ amount'],
+    ['Federal Taxable Income', fmt(r.totalTaxable), 'SS taxable portion + conv + draws'],
+    ['FEDERAL TAX','',''],
+    ['Federal Tax (MFJ brackets)', fmt(r.ft), ''],
+    ['Marginal Rate', margRate + '%', 'Highest bracket reached'],
+    ['Effective Federal Rate', effFed + '%', 'On taxable income'],
+    ['STATE TAX (' + INP.state + ')','',''],
+    ['State Taxable Base', fmt(r.stateTaxBase), INP.state === 'NJ' ? 'Conv + draws over $100k exclusion' : 'SS + Conv + draws'],
+    ['State Tax', fmt(r.stateTax), INP.state === 'NJ' ? 'NJ: SS exempt, $100k IRA exclusion' : INP.state + ' flat rate'],
+    ['Effective State Rate', effState + '%', 'On total taxable income'],
+    ['MEDICARE','',''],
+    ['Your Medicare Part B + IRMAA', fmt(r.medicareYr), 'Paid via HSA'],
+    ['Wife Medicare Part B + IRMAA', fmt(r.spMedicareYr), 'Paid from withdrawals'],
+    ['IRMAA Surcharge', irmaaLabel, 'Based on MAGI 2 years prior'],
+    ['SUMMARY','',''],
+    ['Total Federal + State Tax', fmt(totalTax), ''],
+    ['Effective Rate on All Income', effectiveAll + '%', 'Total tax ÷ gross income'],
+    ['Net Spendable', fmt(r.totalSS + r.rothDraw + r.brokDraw + r.tradDraw + r.hsaPay - totalTax), 'After all taxes'],
+    ['Total Needs (expenses)', fmt(r.totalNeeds), 'Living + housing + medical'],
+    ['Surplus / (Shortfall)', fmt(r.surplus), r.surplus >= 0 ? '✓ Funded' : '⚠ Shortfall']
+  ];
+
+  var html = '<div class="tbl-wrap"><table>';
+  for (var i = 0; i < rows2.length; i++) {
+    var isHeader = rows2[i][1] === '';
+    if (isHeader) {
+      html += '<tr style="background:#1a2d42"><td colspan="3" style="color:#e8c96a;font-weight:700;font-family:Georgia,serif;padding:8px 10px;letter-spacing:0.5px">' + rows2[i][0] + '</td></tr>';
+    } else {
+      var valColor = rows2[i][0].includes('Tax') && !rows2[i][0].includes('Rate') && !rows2[i][0].includes('Taxable') && !rows2[i][0].includes('IRMAA') ? '#e05c5c' :
+                     rows2[i][0].includes('Tax-free') || rows2[i][0].includes('Surplus') || rows2[i][0].includes('Net Spend') ? '#6fcf97' : '#e8c96a';
+      html += '<tr><td style="color:#c0cfe0;font-size:11px;padding:5px 10px">' + rows2[i][0] + '</td>' +
+        '<td style="font-family:\'Courier New\',monospace;font-size:12px;color:' + valColor + ';text-align:right;padding:5px 10px">' + rows2[i][1] + '</td>' +
+        '<td style="color:#7a8fa0;font-size:10px;padding:5px 10px">' + rows2[i][2] + '</td></tr>';
+    }
+  }
+  html += '</table></div>';
+  $('taxproj-content').innerHTML = html;
+}
+
+// ── MONTE CARLO TAB ───────────────────────────────────────────────────────────
+function renderMonteCarlo(rows, INP) {
+  var N = 500, retRows = rows.filter(function(r){ return !r.isWorking; });
+  if (!retRows.length) return;
+  var results = [];  // results[sim] = array of portfolio values by age
+
+  // Box-Muller normal random
+  function randn(mean, std) {
+    var u = 0, v = 0;
+    while(u === 0) u = Math.random();
+    while(v === 0) v = Math.random();
+    return mean + std * Math.sqrt(-2*Math.log(u)) * Math.cos(2*Math.PI*v);
+  }
+
+  for (var sim = 0; sim < N; sim++) {
+    var port = retRows[0].totalPort;
+    var simVals = [];
+    for (var j = 0; j < retRows.length; j++) {
+      var r = retRows[j];
+      var annualReturn = randn(INP.growth, 0.12);
+      // Apply draws (same as base case) then random growth
+      var netDraw = r.tradDraw + r.rothDraw + r.brokDraw + r.hsaPay + r.ft + r.stateTax - r.totalSS;
+      port = Math.max(0, port - netDraw) * (1 + annualReturn);
+      simVals.push(port);
+    }
+    results.push(simVals);
+  }
+
+  // Compute percentiles per age
+  var ageCount = retRows.length;
+  var p10 = [], p50 = [], p90 = [], pctSurv = [];
+  for (var j = 0; j < ageCount; j++) {
+    var vals = results.map(function(s){ return s[j]; }).sort(function(a,b){ return a-b; });
+    p10.push(vals[Math.floor(N*0.10)]);
+    p50.push(vals[Math.floor(N*0.50)]);
+    p90.push(vals[Math.floor(N*0.90)]);
+    pctSurv.push((vals.filter(function(v){ return v > 0; }).length / N * 100).toFixed(0));
+  }
+
+  // Summary cards
+  var survAt85 = pctSurv[Math.min(ageCount-1, retRows.findIndex(function(r){ return r.age >= 85; }))];
+  var survAt90idx = retRows.findIndex(function(r){ return r.age >= 90; });
+  var survAt90 = survAt90idx >= 0 ? pctSurv[survAt90idx] : pctSurv[ageCount-1];
+  $('mc-summary').innerHTML =
+    '<div class="card green"><div class="card-label">Survival to Age 85</div><div class="card-value">' + survAt85 + '%</div><div class="card-sub">of 500 simulations</div></div>' +
+    '<div class="card gold"><div class="card-label">Survival to Age 90</div><div class="card-value">' + survAt90 + '%</div><div class="card-sub">of 500 simulations</div></div>' +
+    '<div class="card gold"><div class="card-label">Median Portfolio Age 85</div><div class="card-value">' + fmtK(p50[Math.min(ageCount-1, retRows.findIndex(function(r){ return r.age>=85;}))]) + '</div><div class="card-sub">50th percentile</div></div>' +
+    '<div class="card red"><div class="card-label">Bear Case Age 85</div><div class="card-value">' + fmtK(p10[Math.min(ageCount-1, retRows.findIndex(function(r){ return r.age>=85;}))]) + '</div><div class="card-sub">10th percentile</div></div>';
+
+  // Table (every 2 years)
+  var tbody = '';
+  for (var j = 0; j < ageCount; j += 2) {
+    var survPct = parseFloat(pctSurv[j]);
+    var color = survPct > 80 ? '#6fcf97' : survPct > 60 ? '#e8c96a' : '#e05c5c';
+    tbody += '<tr><td>' + retRows[j].age + '</td><td>' + fmtK(p50[j]) + '</td><td>' + fmtK(p10[j]) + '</td><td>' + fmtK(p90[j]) + '</td>' +
+      '<td style="color:' + color + ';font-weight:700">' + pctSurv[j] + '%</td></tr>';
+  }
+  $('mc-body').innerHTML = tbody;
+
+  // Simple ASCII-style bar chart using inline SVG
+  var chartW = 700, chartH = 180;
+  var maxVal = Math.max.apply(null, p90) * 1.05;
+  var pts50 = '', pts10 = '', pts90 = '';
+  for (var j = 0; j < ageCount; j++) {
+    var x = (j / (ageCount-1)) * chartW;
+    pts50 += x + ',' + (chartH - p50[j]/maxVal*chartH) + ' ';
+    pts10 += x + ',' + (chartH - p10[j]/maxVal*chartH) + ' ';
+    pts90 += x + ',' + (chartH - p90[j]/maxVal*chartH) + ' ';
+  }
+  var bandPts = pts90 + pts10.split(' ').reverse().join(' ');
+  $('mc-chart').innerHTML = '<svg viewBox="0 0 ' + chartW + ' ' + chartH + '" style="width:100%;background:#0f1e2e;border-radius:6px;padding:4px">' +
+    '<polygon points="' + bandPts + '" fill="rgba(91,126,201,0.15)"/>' +
+    '<polyline points="' + pts10 + '" fill="none" stroke="#e05c5c" stroke-width="1.5" stroke-dasharray="4,3"/>' +
+    '<polyline points="' + pts50 + '" fill="none" stroke="#6fcf97" stroke-width="2.5"/>' +
+    '<polyline points="' + pts90 + '" fill="none" stroke="#5b7ec9" stroke-width="1.5" stroke-dasharray="4,3"/>' +
+    '<text x="8" y="14" font-size="10" fill="#6fcf97">— Median</text>' +
+    '<text x="80" y="14" font-size="10" fill="#5b7ec9">--- 90th pctile</text>' +
+    '<text x="190" y="14" font-size="10" fill="#e05c5c">--- 10th pctile</text>' +
+    '</svg>';
+}
+
+// ── SURVIVOR TAB ──────────────────────────────────────────────────────────────
+function renderSurvivor(rows, INP) {
+  if (!rows || !INP) return;
+  window._lastRows = rows; window._lastINP = INP;
+  var spPassAge = parseInt($('surv_sp_age') ? $('surv_sp_age').value : 75);
+  var expRedPct = parseFloat($('surv_exp_pct') ? $('surv_exp_pct').value : 20) / 100;
+
+  // Single filer tax brackets (2024)
+  function fedTaxSingle(t) {
+    if (t <= 0) return 0;
+    if (t <= 11600)  return t * 0.10;
+    if (t <= 47150)  return 1160  + (t - 11600)  * 0.12;
+    if (t <= 100525) return 5426  + (t - 47150)  * 0.22;
+    if (t <= 191950) return 17168 + (t - 100525) * 0.24;
+    if (t <= 243725) return 39110 + (t - 191950) * 0.32;
+    if (t <= 609350) return 55578 + (t - 243725) * 0.35;
+    return 183647 + (t - 609350) * 0.37;
+  }
+
+  var retRows = rows.filter(function(r){ return !r.isWorking; });
+  var tbody = '', tPorts = [], tTax = 0;
+  var trad = retRows[0] ? retRows[0].tradBal : 0;
+  var roth = retRows[0] ? retRows[0].rothBal + retRows[0].rothSpBal : 0;
+  var brok = retRows[0] ? retRows[0].brokBal : 0;
+
+  for (var i = 0; i < retRows.length; i++) {
+    var r = retRows[i];
+    var spouseAlive = (INP.sp_age + (r.age - INP.age)) < spPassAge;
+    var filing = spouseAlive ? 'MFJ' : 'Single';
+    // SS: survivor gets higher of own or spouse's benefit (your SS as survivor)
+    var ss_cola_yrs = r.age >= INP.ss_age ? (r.age - INP.ss_age) : 0;
+    var baseSSYr = (INP.ss_age === 70 ? INP.ss70 : INP.ss_age === 65 ? INP.ss65 : INP.ss67) * 12;
+    var survSS = baseSSYr * Math.pow(1 + INP.ss_cola, ss_cola_yrs);
+    var ss = spouseAlive ? r.ss_income + r.sp_ss : (r.age >= INP.ss_age ? survSS : 0);
+    // Expenses reduced after spouse passes
+    var living = r.living * (spouseAlive ? 1 : (1 - expRedPct));
+    var totalNeeds = living + r.housing + r.propIns + (spouseAlive ? r.spIns : 0) + r.medicareYr + (spouseAlive ? r.spMedicareYr : 0);
+    var hsaPay = r.medicareYr;
+    var livingGap = Math.max(0, totalNeeds - ss - hsaPay);
+    // Use survivor tax brackets after spouse passes
+    var taxFn = spouseAlive ? fedTax : fedTaxSingle;
+    var convAmt = spouseAlive ? r.conv : Math.min(r.conv, Math.max(0, 47150 - r.ss_taxable)); // conservative conv after death
+    var ft_s = taxFn(r.ss_taxable + convAmt);
+    var tradDraw_s = Math.min(Math.max(0, trad - convAmt), livingGap + ft_s + r.stateTax);
+    var rothPool = roth; var rothDraw_s = Math.min(rothPool, Math.max(0, livingGap - tradDraw_s));
+    var brokDraw_s = Math.min(brok, Math.max(0, livingGap - tradDraw_s - rothDraw_s));
+    var totalTax_s = ft_s + r.stateTax;
+
+    trad = Math.max(0, trad - convAmt - tradDraw_s) * (1 + INP.growth);
+    roth = Math.max(0, roth + convAmt - rothDraw_s) * (1 + INP.growth);
+    brok = Math.max(0, brok - brokDraw_s) * (1 + INP.growth);
+    var port = trad + roth + brok;
+    tPorts.push(port); tTax += totalTax_s;
+
+    var rowStyle = !spouseAlive ? ' style="background:rgba(224,92,92,0.08)"' : '';
+    tbody += '<tr' + rowStyle + '><td>' + r.age + '</td><td>' + filing + '</td><td>' + fmt(ss) + '</td>' +
+      '<td class="tax-cell">' + fmt(ft_s) + '</td><td class="tax-cell">' + fmt(r.stateTax) + '</td>' +
+      '<td>' + fmt(living) + '</td><td>' + fmt(totalNeeds) + '</td>' +
+      '<td>' + fmt(tradDraw_s) + '</td><td>' + fmt(rothDraw_s) + '</td><td>' + fmt(brokDraw_s) + '</td>' +
+      '<td>' + fmtK(port) + '</td></tr>';
+  }
+  $('surv-body').innerHTML = tbody;
+  var finalPort = tPorts[tPorts.length-1] || 0;
+  var spPassYrAge = spPassAge;
+  $('surv-summary').innerHTML =
+    '<div class="card red"><div class="card-label">Wife Passes At Age</div><div class="card-value">' + spPassAge + '</div><div class="card-sub">Your age: ' + (INP.age + spPassAge - INP.sp_age) + '</div></div>' +
+    '<div class="card gold"><div class="card-label">Filing Changes To Single</div><div class="card-value">Age ' + (INP.age + spPassAge - INP.sp_age) + '</div><div class="card-sub">Brackets compress ~50%</div></div>' +
+    '<div class="card red"><div class="card-label">Total Extra Tax (Single)</div><div class="card-value">' + fmtK(tTax) + '</div><div class="card-sub">vs MFJ throughout</div></div>' +
+    '<div class="card green"><div class="card-label">Estate at Age ' + INP.life + '</div><div class="card-value">' + fmtK(finalPort) + '</div><div class="card-sub">Survivor scenario</div></div>';
+}
+
 function runAll() {
   // Highlight selected withdrawal option
   var labelA = $('wd-opt-a-label'), labelB = $('wd-opt-b-label');
@@ -1275,14 +1704,23 @@ function runAll() {
   if (labelB) labelB.style.border = isOptB ? '1px solid rgba(232,201,106,0.6)' : '1px solid transparent';
 
   var result = calc();
+  window._lastRows = result.rows;
+  window._lastINP  = result.INP;
+
   renderRoth(result.rows, result.INP);
   renderWithdrawal(result.rows, result.INP);
   renderPortfolio(result.rows, result.INP);
+  renderRMD(result.rows, result.INP);
   renderSS(result.INP);
+  // Populate tax age selector then render
+  if ($('tax_age_sel')) $('tax_age_sel').innerHTML = '';
+  renderTaxProj(result.rows, result.INP);
+  renderMonteCarlo(result.rows, result.INP);
+  renderSurvivor(result.rows, result.INP);
   renderAdvice(result.rows, result.INP);
 }
 
-runAll();
+calcAgeFromDOB();  // compute ages from DOBs then run all tabs
 </script>
 </body>
 </html>
