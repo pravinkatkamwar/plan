@@ -519,7 +519,11 @@ tbody td.tax-cell  { color: var(--red); }
     <div class="input-row"><label>Medicare Part B / mo ($)</label><input type="number" id="i_medicare" value="185"></div>
     <div class="input-row"><label>Medicare Inflation Rate (%)</label><input type="number" id="i_med_infl" value="5.0" step="0.1" min="0" max="10"></div>
     <div class="input-row"><label>Wife Private Ins / mo ($) (pre-65)</label><input type="number" id="i_sp_ins" value="800"></div>
+    <div class="input-row"><label>Home Value ($)</label><input type="number" id="i_home_val" value="650000" oninput="runAll()"></div>
+    <div class="input-row"><label>Annual Gift to Children ($)</label><input type="number" id="i_annual_gift" value="0" oninput="runAll()"></div>
+    <div class="input-row"><label>Gift Start Age</label><input type="number" id="i_gift_age" value="70" min="63" max="85" oninput="runAll()"></div>
   </div><!-- end input-grid -->
+  <div class="note" style="margin-bottom:8px">Annual gift reduces portfolio each year from Gift Start Age. 2024 annual exclusion is $18,000/person ($36k/yr to one child). Gift does not affect taxable income.</div>
   </div><!-- end collapsible-body: Expenses -->
 
   <div class="section-title collapsible" onclick="toggleSection(this)">Tax &amp; Conversion Strategy</div>
@@ -575,8 +579,15 @@ tbody td.tax-cell  { color: var(--red); }
 
   <button class="calc-btn" onclick="runAll()">CALCULATE ALL TABS</button>
 
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+    <button onclick="saveScenario()" style="flex:1;min-width:120px;padding:9px 12px;background:#1e2d45;color:#a0b4c8;border:1px solid #3a5070;border-radius:5px;font-size:12px;font-weight:600;cursor:pointer">💾 Save Scenario</button>
+    <button onclick="restoreScenario()" style="flex:1;min-width:120px;padding:9px 12px;background:#1e2d45;color:#a0b4c8;border:1px solid #3a5070;border-radius:5px;font-size:12px;font-weight:600;cursor:pointer">📂 Restore Scenario</button>
+    <button onclick="printSummary()" style="flex:1;min-width:120px;padding:9px 12px;background:#1e2d45;color:#a0b4c8;border:1px solid #3a5070;border-radius:5px;font-size:12px;font-weight:600;cursor:pointer">🖨️ Print Summary</button>
+  </div>
+  <div id="save-status" style="font-size:11px;color:#6fcf97;margin-top:6px;min-height:16px"></div>
+
   <div class="note">
-    <strong>How to use:</strong> Edit any value above then tap <em>Calculate All Tabs</em>. All five tabs update instantly. Property tax, home insurance, living expenses, and wife insurance all grow at the inflation rate each year.
+    <strong>How to use:</strong> Edit any value above then tap <em>Calculate All Tabs</em>. All five tabs update instantly. Property tax, home insurance, living expenses, and wife insurance all grow at the inflation rate each year. &middot; <strong>Save Scenario</strong> copies all inputs to clipboard as JSON. <strong>Restore Scenario</strong> pastes them back.
   </div>
 </div>
 
@@ -591,6 +602,7 @@ tbody td.tax-cell  { color: var(--red); }
         <th>Age</th><th>Trad 401k Start</th><th>SS Income</th>
         <th>Taxable Before Conv</th><th>Roth Conversion</th>
         <th>Total Taxable</th><th>Fed Tax Est.</th><th>Eff Rate</th>
+        <th>IRMAA Tier (age+2)</th>
         <th>Trad 401k End</th>
       </tr></thead>
       <tbody id="roth-body"></tbody>
@@ -676,6 +688,16 @@ tbody td.tax-cell  { color: var(--red); }
     <div class="note" style="margin-bottom:10px">Compares carrying the mortgage vs. paying it off at retirement. Toggle the checkbox in Inputs → Expenses to switch the model.</div>
     <div id="mortgage-compare-box"></div>
   </div>
+
+  <div class="section-title" style="margin-top:18px">Inflation Stress Test</div>
+  <div class="note" style="margin-bottom:10px">Same withdrawal plan, different inflation assumptions. Shows how sensitive your portfolio is to inflation eroding purchasing power.</div>
+  <div id="inflation-stress-cards" class="cards" style="margin-bottom:10px"></div>
+  <div id="inflation-stress-table"></div>
+
+  <div class="section-title" style="margin-top:18px">Growth Rate Stress Test</div>
+  <div class="note" style="margin-bottom:10px">Same plan, different portfolio return assumptions. Complements Monte Carlo by showing the deterministic impact of lower sustained returns.</div>
+  <div id="growth-stress-cards" class="cards" style="margin-bottom:10px"></div>
+  <div id="growth-stress-table"></div>
 </div>
 
 <!-- SOCIAL SECURITY -->
@@ -961,6 +983,9 @@ function calc(overrides) {
     med_infl:        (v('i_med_infl') || 5.0) / 100,
     avoid_irmaa:     !!($('i_avoid_irmaa') && $('i_avoid_irmaa').checked),
     payoff_mortgage: !!($('i_payoff_mortgage') && $('i_payoff_mortgage').checked),
+    home_val:   v('i_home_val') || 650000,
+    annual_gift: v('i_annual_gift') || 0,
+    gift_age:   v('i_gift_age') || 70,
     wd_order:        ($('i_wd_order_b') && $('i_wd_order_b').checked) ? 'brok_roth' : 'roth_brok'
   };
 
@@ -1006,7 +1031,7 @@ function calc(overrides) {
     tradStart: seedTrad, tradEnd: seedTrad, tradBal: seedTrad,
     rothBal: seedRoth, rothSpBal: seedRothSp, tradSpBal: seedTradSp,
     hsaBal: seedHSA, brokBal: seedBrok, totalPort: seedTotal,
-    netWorth: seedTotal + 650000,
+    netWorth: seedTotal + (INP.home_val || 650000),
     yourContrib: 0, matchAmt: 0, hsaContrib: 0, totalContrib: 0, portGrowthAmt: 0,
     ss: 0, ss_taxable: 0, conv: 0, totalTaxable: INP.salary, ft: 0, effRate: 0,
     living: 0, housing: 0, propIns: 0, spIns: 0, medicareYr: 0, spMedicareYr: 0,
@@ -1050,7 +1075,7 @@ function calc(overrides) {
         stateTax: 0, stateTaxBase: 0,
         tradBal: tradEnd, rothBal: newRoth, rothSpBal: newRothSp, tradSpBal: newTradSp,
         hsaBal: newHSA, brokBal: newBrok, totalPort: totalPort,
-        netWorth: totalPort + 650000,
+        netWorth: totalPort + (INP.home_val || 650000),
         yourContrib: yourContrib, matchAmt: matchAmt, hsaContrib: hsaContrib,
         totalContrib: yourContrib + matchAmt + hsaContrib,
         portGrowthAmt: totalPort - (trad + roth + rothSp + tradSp + hsa + brok) - yourContrib - matchAmt - hsaContrib - spContrib
@@ -1173,6 +1198,10 @@ function calc(overrides) {
         brok += rmdExcess;   // reinvest excess RMD proceeds into brokerage immediately
       }
 
+      // Annual gift: deducted from brokerage (after-tax dollars), starting at gift_age
+      var giftAmt = (INP.annual_gift > 0 && age >= INP.gift_age) ? INP.annual_gift : 0;
+      brok = Math.max(0, brok - giftAmt);  // gift comes from brokerage
+
       rothDraw_me = rothTotal > 0 ? rothDraw * (roth + conv) / rothTotal : 0;
       rothDraw_sp = rothTotal > 0 ? rothDraw * rothSp / rothTotal : 0;
 
@@ -1202,8 +1231,9 @@ function calc(overrides) {
         stateTax: stateTax, stateTaxBase: stateTaxBase,
         tradBal: tradEnd, rothBal: newRoth, rothSpBal: newRothSp, tradSpBal: newTradSp,
         hsaBal: newHSA, brokBal: newBrok, totalPort: totalPort,
-        netWorth: totalPort + 650000,
-        rmdRequired: rmdRequired, rmdFactor: rmdFactor, rmdExcess: rmdExcess
+        netWorth: totalPort + (INP.home_val || 650000),
+        rmdRequired: rmdRequired, rmdFactor: rmdFactor, rmdExcess: rmdExcess,
+        giftAmt: giftAmt
       });
 
       // IRMAA MAGI = taxable portion of SS + conv + tradDraw (NOT gross SS)
@@ -1248,6 +1278,19 @@ function renderRoth(rows, INP) {
     var convCell = r.isWorking ? '<td style="color:#5b7ec9;font-style:italic">Working</td>'
                  : r.isRMD    ? '<td class="rmd-cell">RMD Age</td>'
                                : '<td class="conv-cell">' + fmt(r.conv) + '</td>';
+    // IRMAA look-ahead: this year's MAGI drives IRMAA 2 years from now
+    var irmaaLookCell = '—';
+    if (!r.isWorking) {
+      var futureMagi = r.totalTaxable; // current MAGI → IRMAA at age+2
+      var futureIrmaa = irmaa(futureMagi);
+      var tier = futureMagi <= 206000 ? 'Base' : futureMagi <= 258000 ? 'Tier 1' :
+                 futureMagi <= 322000 ? 'Tier 2' : futureMagi <= 386000 ? 'Tier 3' :
+                 futureMagi <= 750000 ? 'Tier 4' : 'Tier 5';
+      var tierColor = futureIrmaa === 0 ? '#2d6a4f' : futureIrmaa <= 888 ? '#5b7ec9' :
+                      futureIrmaa <= 2244 ? '#b56a00' : '#b5231a';
+      irmaaLookCell = '<span style="color:' + tierColor + ';font-weight:600">' + tier + '</span>' +
+        (futureIrmaa > 0 ? '<br><span style="font-size:10px;color:' + tierColor + '">' + fmt(futureIrmaa) + '/yr</span>' : '');
+    }
     tr.innerHTML =
       '<td>' + r.age + '</td>' +
       '<td>' + fmt(r.tradStart) + '</td>' +
@@ -1257,6 +1300,7 @@ function renderRoth(rows, INP) {
       '<td>' + (r.isWorking ? '—' : fmt(r.totalTaxable)) + '</td>' +
       '<td class="tax-cell">' + (r.isWorking ? '—' : fmt(r.ft)) + '</td>' +
       '<td>' + (r.isWorking ? '—' : pct(r.effRate)) + '</td>' +
+      '<td style="text-align:center">' + irmaaLookCell + '</td>' +
       '<td>' + fmt(r.tradEnd) + '</td>';
     tbody.appendChild(tr);
   }
@@ -1299,6 +1343,7 @@ function renderWithdrawal(rows, INP) {
     '<div class="card gold"><div class="card-label">Total Fed Taxes</div><div class="card-value">' + fmtK(tTax) + '</div><div class="card-sub">On taxable income</div></div>' +
     '<div class="card gold"><div class="card-label">Total All Taxes</div><div class="card-value">' + fmtK(tTax + tStateTax) + '</div><div class="card-sub">Fed + ' + stateLabel + ' combined</div></div>';
 
+  var retRows = rows.filter(function(r){ return !r.isWorking; });
   var tbody = $('wd-body');
   tbody.innerHTML = '';
   for (var i=0;i<rows.length;i++) {
@@ -1341,6 +1386,23 @@ function renderWithdrawal(rows, INP) {
     }
     tbody.appendChild(tr);
   }
+  // Totals row
+  var totRow = document.createElement('tr');
+  totRow.className = 'totals-row';
+  totRow.innerHTML =
+    '<td style="font-weight:700;color:var(--navy)">TOTAL</td>' +
+    '<td colspan="5" style="text-align:right;font-style:italic;color:var(--muted);font-size:11px">Lifetime totals (ret. years)</td>' +
+    '<td style="font-weight:700">' + fmtK(retRows.reduce(function(s,r){return s+r.totalNeeds;},0)) + '</td>' +
+    '<td style="font-weight:700">' + fmtK(tSS) + '</td>' +
+    '<td class="conv-cell" style="font-weight:700">' + fmtK(tSpSS) + '</td>' +
+    '<td style="font-weight:700">' + fmtK(tTrad) + '</td>' +
+    '<td class="conv-cell" style="font-weight:700">' + fmtK(tRoth) + '</td>' +
+    '<td style="font-weight:700">' + fmtK(tBrok) + '</td>' +
+    '<td class="conv-cell" style="font-weight:700">' + fmtK(tHSA) + '</td>' +
+    '<td class="tax-cell" style="font-weight:700">' + fmtK(tTax) + '</td>' +
+    '<td class="tax-cell" style="font-weight:700">' + fmtK(tStateTax) + '</td>' +
+    '<td></td><td></td>';
+  tbody.appendChild(totRow);
 }
 
 function renderPortfolio(rows, INP) {
@@ -1405,7 +1467,7 @@ function renderPortfolio(rows, INP) {
   $('pg-summary').innerHTML =
     '<div class="card gold"><div class="card-label">Total Portfolio Age ' + INP.life + '</div><div class="card-value">' + fmtK(last.totalPort) + '</div><div class="card-sub">All accounts</div></div>' +
     '<div class="card green"><div class="card-label">Roth at Age ' + INP.life + '</div><div class="card-value">' + fmtK(last.rothBal + last.rothSpBal) + '</div><div class="card-sub">Tax-free to heirs</div></div>' +
-    '<div class="card gold"><div class="card-label">Net Worth Age ' + INP.life + '</div><div class="card-value">' + fmtK(last.netWorth) + '</div><div class="card-sub">Incl. $650k home</div></div>' +
+    '<div class="card gold"><div class="card-label">Net Worth Age ' + INP.life + '</div><div class="card-value">' + fmtK(last.netWorth) + '</div><div class="card-sub">Incl. home</div></div>' +
     '<div class="card green"><div class="card-label">HSA at Age ' + INP.life + '</div><div class="card-value">' + fmtK(last.hsaBal) + '</div><div class="card-sub">Medical reserve</div></div>';
 
   var tbody = $('pg-body');
@@ -1436,8 +1498,8 @@ function renderPortfolio(rows, INP) {
     ['Wife Roth IRA', last.rothSpBal, 'TAX-FREE to heirs', true],
     ['HSA Balance', last.hsaBal, 'Taxable to non-wife heirs - use during lifetime', false],
     ['Brokerage', last.brokBal, 'Step-up basis at death - minimal cap gains tax', false],
-    ['Home (estimated)', 650000, 'Subject to estate rules', false],
-    ['TOTAL ESTATE', last.totalPort + 650000, 'All accounts + home', 'total']
+    ['Home (estimated)', INP.home_val || 650000, 'Subject to estate rules', false],
+    ['TOTAL ESTATE', last.totalPort + (INP.home_val || 650000), 'All accounts + home', 'total']
   ];
   var html = '<div style="color:#e8c96a;font-family:Georgia,serif;font-size:14px;margin-bottom:10px">Estimated Estate at Age 85</div>';
   for (var i=0;i<items.length;i++) {
@@ -1655,11 +1717,17 @@ function updateBridgeRate() {
 }
 
 function renderAdvice(rows, INP) {
-  var totalConv=0, totalTax=0, totalTaxableInc=0;
-  for (var i=0;i<rows.length;i++) { totalConv+=rows[i].conv; totalTax+=rows[i].ft; totalTaxableInc+=rows[i].totalTaxable; }
+  var totalConv=0, totalTax=0, totalTaxableInc=0, totalStateTaxBase=0;
+  for (var i=0;i<rows.length;i++) {
+    totalConv+=rows[i].conv; totalTax+=rows[i].ft;
+    totalTaxableInc+=rows[i].totalTaxable;
+    totalStateTaxBase += rows[i].stateTaxBase || 0;  // conv+tradDraw (excl SS, which NJ exempts)
+  }
   var stateRate = INP.state_rate;
   var stateName = INP.state;
-  var waSavings = totalTaxableInc * stateRate;
+  // WA savings = state tax on income that WA would also tax (conv + tradDraw);
+  // NJ already exempts SS so we use stateTaxBase (conv+tradDraw) not totalTaxable
+  var waSavings = totalStateTaxBase * stateRate;
 
   // Update header and section title dynamically
   var sub = $('header-subtitle');
@@ -1676,7 +1744,7 @@ function renderAdvice(rows, INP) {
     ['RMDs BEGIN AT AGE ' + INP.rmd_age,'SECURE 2.0 Act: RMDs start at ' + INP.rmd_age + '. You have ' + (INP.rmd_age - 64) + ' years (ages 64–' + (INP.rmd_age-1) + ') to convert to Roth before RMDs force taxable withdrawals.','&#x1F4CB;'],
     ['HSA STRATEGY','HSA covers your Medicare Part B + IRMAA surcharges only (IRS-qualified, tax-free). Wife Medicare Part B is paid from regular withdrawals — not HSA-eligible on a separate account. Do NOT use HSA for spouse private insurance either.','&#x1F3E5;'],
     ['IRMAA WARNING','Roth conversion income (~$201k/yr) triggers IRMAA surcharges. Prior salary of $' + INP.salary.toLocaleString() + ' also affects ages 65-66 surcharges.','&#x26A0;'],
-    ['ESTATE PLANNING','Roth accounts pass tax-free to your children (10-year rule). Every dollar converted now becomes a tax-free inheritance. Minimize Trad 401k balance by age 85.','&#x1F46A;'],
+    ['ESTATE PLANNING','Roth accounts pass tax-free to your children (10-year rule). Every dollar converted now becomes a tax-free inheritance. Minimize Trad 401k balance by age 85.' + (INP.annual_gift > 0 ? ' Annual gift of ' + fmt(INP.annual_gift) + ' modeled from age ' + INP.gift_age + ' — reduces brokerage each year.' : '') + '','&#x1F46A;'],
     ['PROPERTY COSTS','Mortgage, property tax ($' + INP.prop_tax.toLocaleString() + '/yr), and home insurance ($' + INP.home_ins.toLocaleString() + '/yr) all grow with inflation and are modeled as ongoing costs in the withdrawal plan.','&#x1F3E0;']
   ];
 
@@ -1728,7 +1796,7 @@ function renderRMD(rows, INP) {
       '<td>' + r.age + '</td>' +
       '<td>' + fmt(r.tradStart) + '</td>' +
       '<td>' + (r.rmdFactor || '—') + '</td>' +
-      '<td style="color:#e8c96a;font-weight:700">' + fmt(r.rmdRequired) + '</td>' +
+      '<td style="color:var(--navy);font-weight:700">' + fmt(r.rmdRequired) + '</td>' +
       '<td>' + fmt(r.conv) + '</td>' +
       '<td>' + (extraConv > 0 ? fmt(extraConv) : '—') + '</td>' +
       '<td>' + fmt(r.tradDraw + r.conv) + '</td>' +
@@ -1780,7 +1848,7 @@ function renderTaxProj(rows, INP) {
     ['Roth Conversion', fmt(r.conv), 'Taxable ordinary income'],
     ['Trad 401k Draw (expenses)', fmt(r.tradDraw), 'Taxable ordinary income'],
     ['Roth Draw', fmt(r.rothDraw), 'Tax-free — not in AGI'],
-    ['Brokerage Draw', fmt(r.brokDraw), 'Tax-free basis / LTCG'],
+    ['Brokerage Draw', fmt(r.brokDraw), 'Return of basis tax-free; gains taxed at ' + Math.round((INP.ltcg_rate||0.15)*100) + '% LTCG (see note)'],
     ['HSA Draw (Medicare)', fmt(r.hsaPay), 'Tax-free qualified expense'],
     ['Gross Income (AGI)', fmt(agi), 'SS + Conv + Trad draws'],
     ['DEDUCTIONS & TAXABLE','',''],
@@ -2205,6 +2273,275 @@ function renderMortgageCompare(INP) {
 }
 
 
+// ── SAVE / RESTORE SCENARIO ──────────────────────────────────────────────────
+var SCENARIO_FIELDS = [
+  'i_dob','i_ret','i_life','i_salary','i_trad401k','i_roth401k','i_contrib','i_match',
+  'i_roth_ira','i_roth_sp','i_trad_sp','i_hsa','i_hsa_c','i_brok',
+  'i_growth','i_infl','i_ss_cola','i_std_ded','i_conv_tgt',
+  'i_ss65','i_ss67','i_ss70','i_ss_age','i_sp_ss_age',
+  'i_living','i_mortgage','i_prop_tax','i_home_ins','i_medicare','i_med_infl','i_sp_ins',
+  'i_sp_dob','i_sp_ret','i_sp_salary','i_sp_401k','i_sp_contrib','i_sp_match_rate',
+  'i_trad_sp','i_roth_sp','i_ss_taxable_pct','i_rmd_age','i_ltcg_rate','i_home_val','i_annual_gift','i_gift_age'
+];
+
+function saveScenario() {
+  var scenario = { _version: 2, _saved: new Date().toISOString().slice(0,10) };
+  SCENARIO_FIELDS.forEach(function(id) {
+    var el = $(id);
+    if (el) scenario[id] = el.value;
+  });
+  var stateEl = $('i_state');
+  if (stateEl) scenario['i_state'] = stateEl.value;
+  scenario['i_avoid_irmaa'] = !!($('i_avoid_irmaa') && $('i_avoid_irmaa').checked);
+  scenario['i_payoff_mortgage'] = !!($('i_payoff_mortgage') && $('i_payoff_mortgage').checked);
+  scenario['i_wd_order'] = ($('i_wd_order_b') && $('i_wd_order_b').checked) ? 'brok_roth' : 'roth_brok';
+
+  var json = JSON.stringify(scenario, null, 2);
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(json).then(function() {
+      showSaveStatus('✓ Scenario copied to clipboard — paste into Restore to reload', '#6fcf97');
+    }).catch(function() { showSaveStatus('Copy failed — try Ctrl+C on the text below', '#e05c5c'); });
+  } else {
+    // Fallback: show in a prompt
+    window.prompt('Copy this scenario JSON:', json);
+    showSaveStatus('✓ Scenario JSON shown — copy it to save', '#6fcf97');
+  }
+}
+
+function restoreScenario() {
+  var json = window.prompt('Paste your saved scenario JSON here:');
+  if (!json) return;
+  try {
+    var s = JSON.parse(json.trim());
+    SCENARIO_FIELDS.forEach(function(id) {
+      if (s[id] !== undefined && $(id)) $(id).value = s[id];
+    });
+    if (s['i_state'] && $('i_state')) $('i_state').value = s['i_state'];
+    if ($('i_avoid_irmaa')) $('i_avoid_irmaa').checked = !!s['i_avoid_irmaa'];
+    if ($('i_payoff_mortgage')) $('i_payoff_mortgage').checked = !!s['i_payoff_mortgage'];
+    if (s['i_wd_order'] === 'brok_roth') {
+      if ($('i_wd_order_b')) $('i_wd_order_b').checked = true;
+    } else {
+      if ($('i_wd_order_a')) $('i_wd_order_a').checked = true;
+    }
+    calcAgeFromDOB();
+    runAll();
+    showSaveStatus('✓ Scenario restored from ' + (s._saved || 'saved data'), '#6fcf97');
+  } catch(e) {
+    showSaveStatus('✗ Invalid JSON — check the pasted text', '#e05c5c');
+  }
+}
+
+function showSaveStatus(msg, color) {
+  var el = $('save-status');
+  if (!el) return;
+  el.style.color = color || '#6fcf97';
+  el.textContent = msg;
+  setTimeout(function(){ el.textContent = ''; }, 6000);
+}
+
+// ── PRINT SUMMARY ─────────────────────────────────────────────────────────────
+function printSummary() {
+  if (!window._lastRows || !window._lastINP) { alert('Please calculate first.'); return; }
+  var rows = window._lastRows, INP = window._lastINP;
+  var retRows = rows.filter(function(r){ return !r.isWorking; });
+  var last = retRows[retRows.length-1];
+  var firstRet = retRows[0];
+  var rmdRows = retRows.filter(function(r){ return r.isRMD; });
+  var totalConv=0, totalFedTax=0, totalStateTax=0;
+  retRows.forEach(function(r){ totalConv+=r.conv; totalFedTax+=r.ft; totalStateTax+=r.stateTax; });
+
+  // 5-year sample table rows (every 5 ages)
+  var sampleRows = '';
+  retRows.filter(function(r){ return r.age % 5 === 0 || r.age === firstRet.age; }).forEach(function(r) {
+    sampleRows += '<tr><td>' + r.age + (r.isRMD?' ⚡':'') + '</td><td>$' + Math.round((r.tradBal+r.tradSpBal)/1000) + 'k</td>' +
+      '<td style="color:#2d6a4f">$' + Math.round((r.rothBal+r.rothSpBal)/1000) + 'k</td>' +
+      '<td>$' + Math.round(r.brokBal/1000) + 'k</td><td>$' + Math.round(r.hsaBal/1000) + 'k</td>' +
+      '<td><strong>$' + Math.round(r.totalPort/1000) + 'k</strong></td>' +
+      '<td style="color:#b5231a">$' + Math.round((r.ft+r.stateTax)/1000) + 'k</td></tr>';
+  });
+  if (last.age % 5 !== 0) {
+    sampleRows += '<tr style="background:#e8f4ee"><td><strong>' + last.age + '</strong></td>' +
+      '<td>$' + Math.round((last.tradBal+last.tradSpBal)/1000) + 'k</td>' +
+      '<td style="color:#2d6a4f">$' + Math.round((last.rothBal+last.rothSpBal)/1000) + 'k</td>' +
+      '<td>$' + Math.round(last.brokBal/1000) + 'k</td><td>$' + Math.round(last.hsaBal/1000) + 'k</td>' +
+      '<td><strong>$' + Math.round(last.totalPort/1000) + 'k</strong></td>' +
+      '<td style="color:#b5231a">$' + Math.round((last.ft+last.stateTax)/1000) + 'k</td></tr>';
+  }
+
+  var r70 = retRows.find(function(r){return r.age===70;}) || firstRet;
+  var effTax70 = r70 && (r70.ss_income+r70.sp_ss+r70.conv+r70.tradDraw) > 0
+    ? ((r70.ft+r70.stateTax)/(r70.ss_income+r70.sp_ss+r70.conv+r70.tradDraw)*100).toFixed(1)+'%' : '—';
+
+  var w = window.open('','_blank','width=900,height=700');
+  w.document.write('<!DOCTYPE html><html><head><title>Retirement Plan Summary</title>' +
+  '<style>body{font-family:Arial,sans-serif;font-size:13px;color:#1a1a2e;margin:24px;line-height:1.5}' +
+  'h1{font-size:20px;color:#0f2240;border-bottom:3px solid #c9a84c;padding-bottom:6px;margin-bottom:16px}' +
+  'h2{font-size:13px;color:#0f2240;text-transform:uppercase;letter-spacing:0.05em;margin:20px 0 8px;border-left:4px solid #c9a84c;padding-left:8px}' +
+  '.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}' +
+  '.card{background:#f8f4ed;border:1px solid #d4c9b8;border-radius:6px;padding:10px 12px}' +
+  '.card-label{font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.04em}' +
+  '.card-value{font-size:18px;font-weight:700;color:#0f2240}' +
+  '.card-sub{font-size:10px;color:#888}' +
+  'table{border-collapse:collapse;width:100%;font-size:12px}' +
+  'th{background:#0f2240;color:#e8c96a;padding:6px 8px;text-align:right;font-size:10px;text-transform:uppercase}' +
+  'th:first-child{text-align:left}' +
+  'td{padding:5px 8px;border-bottom:1px solid #e2d9cc;text-align:right}' +
+  'td:first-child{text-align:left;font-weight:600}' +
+  'tr:nth-child(even){background:#f0ebe0}' +
+  '.advice{background:#f0ebe0;border-left:4px solid #c9a84c;padding:8px 12px;margin:6px 0;font-size:12px}' +
+  '.advice strong{color:#0f2240}' +
+  '.footer{margin-top:24px;font-size:10px;color:#888;border-top:1px solid #d4c9b8;padding-top:8px}' +
+  '@media print{body{margin:10px}.no-print{display:none}}' +
+  '</style></head><body>' +
+  '<div style="display:flex;justify-content:space-between;align-items:flex-start">' +
+  '<h1>Retirement Plan Summary</h1>' +
+  '<div style="font-size:11px;color:#888;text-align:right">Generated ' + new Date().toLocaleDateString() + '<br>' +
+  INP.state + ' · Ages ' + INP.age + '–' + INP.life + '</div></div>' +
+
+  '<h2>Plan at a Glance</h2>' +
+  '<div class="grid">' +
+  '<div class="card"><div class="card-label">Portfolio at Age ' + INP.life + '</div><div class="card-value">$' + Math.round(last.totalPort/1000) + 'k</div><div class="card-sub">All accounts combined</div></div>' +
+  '<div class="card"><div class="card-label">Roth at Age ' + INP.life + '</div><div class="card-value" style="color:#2d6a4f">$' + Math.round((last.rothBal+last.rothSpBal)/1000) + 'k</div><div class="card-sub">Tax-free to heirs</div></div>' +
+  '<div class="card"><div class="card-label">Net Worth at ' + INP.life + '</div><div class="card-value">$' + Math.round(last.netWorth/1000) + 'k</div><div class="card-sub">Incl. home</div></div>' +
+  '<div class="card"><div class="card-label">Total Converted</div><div class="card-value">$' + Math.round(totalConv/1000) + 'k</div><div class="card-sub">Trad → Roth, ages 65–' + (INP.rmd_age-1) + '</div></div>' +
+  '</div>' +
+
+  '<div class="grid">' +
+  '<div class="card"><div class="card-label">SS Start Age</div><div class="card-value">' + INP.ss_age + '</div><div class="card-sub">$' + Math.round((INP.ss_age===70?INP.ss70:INP.ss_age===65?INP.ss65:INP.ss67)*12/1000) + 'k/yr (yr 1)</div></div>' +
+  '<div class="card"><div class="card-label">RMDs Begin</div><div class="card-value">Age ' + INP.rmd_age + '</div><div class="card-sub">' + rmdRows.length + ' RMD years modeled</div></div>' +
+  '<div class="card"><div class="card-label">Eff. Tax Rate (age 70)</div><div class="card-value">' + effTax70 + '</div><div class="card-sub">Fed + ' + INP.state + ' on all income</div></div>' +
+  '<div class="card"><div class="card-label">Total Taxes Paid</div><div class="card-value" style="color:#b5231a">$' + Math.round((totalFedTax+totalStateTax)/1000) + 'k</div><div class="card-sub">Fed $' + Math.round(totalFedTax/1000) + 'k + ' + INP.state + ' $' + Math.round(totalStateTax/1000) + 'k</div></div>' +
+  '</div>' +
+
+  '<h2>Portfolio Balance by Age (selected years)</h2>' +
+  '<table><thead><tr><th>Age</th><th>Trad 401k/IRA</th><th>Roth (both)</th><th>Brokerage</th><th>HSA</th><th>Total</th><th>Taxes Paid</th></tr></thead>' +
+  '<tbody>' + sampleRows + '</tbody></table>' +
+  '<div style="font-size:10px;color:#888;margin-top:4px">⚡ = RMD year</div>' +
+
+  '<h2>Key Decisions</h2>' +
+  '<div class="advice"><strong>Withdrawal order:</strong> ' + (INP.wd_order==='brok_roth'?'Trad 401k → Brokerage → Roth (Option B — Preserve Roth)':'Trad 401k → Roth → Brokerage (Option A — Preserve Brokerage)') + '</div>' +
+  '<div class="advice"><strong>Roth conversion target:</strong> Top of ' + (INP.conv_tgt>383900?'24%':INP.conv_tgt>201050?'22%':'12%') + ' bracket ($' + Math.round(INP.conv_tgt/1000) + 'k) · Avoid IRMAA: ' + (INP.avoid_irmaa?'Yes':'No') + '</div>' +
+  '<div class="advice"><strong>SS strategy:</strong> Start at age ' + INP.ss_age + ' · Wife SS at age ' + INP.sp_ss_age + ' (spousal benefit)</div>' +
+  '<div class="advice"><strong>HSA:</strong> Covers your Medicare Part B + IRMAA only · Wife Medicare from withdrawals · Growth rate: ' + (INP.growth*100).toFixed(1) + '%/yr</div>' +
+  '<div class="advice"><strong>State:</strong> ' + INP.state + (INP.state==='NJ'?' · SS exempt · $100k IRA exclusion (MFJ 62+)':' · ' + (INP.state_rate*100).toFixed(2) + '% flat rate on taxable income') + '</div>' +
+
+  '<div class="footer">This summary is for personal planning purposes only. Not financial, tax, or legal advice. Consult a CPA or CFP before making retirement decisions. Generated by Retirement Planning Model.</div>' +
+  '</body></html>');
+  w.document.close();
+  setTimeout(function(){ w.print(); }, 400);
+}
+
+// ── GROWTH RATE STRESS TEST ──────────────────────────────────────────────────
+function renderGrowthStress(INP) {
+  var rates = [4, 5, 6, 7, 8, 9];
+  var baseGrowth = Math.round(INP.growth * 100);
+  var results = [];
+  for (var ri = 0; ri < rates.length; ri++) {
+    var r = calc({ growth: rates[ri] / 100 });
+    var retR = r.rows.filter(function(x){ return !x.isWorking; });
+    var last = retR[retR.length - 1];
+    var annualExp = INP.living * 12 * Math.pow(1 + INP.infl, (INP.life||85) - (INP.ret||65));
+    results.push({
+      rate: rates[ri],
+      port: last ? last.totalPort : 0,
+      nw: last ? last.netWorth : 0,
+      roth: last ? last.rothBal + last.rothSpBal : 0,
+      annualExp: annualExp,
+      isBase: rates[ri] === baseGrowth
+    });
+  }
+
+  var cards = '', rows = '';
+  for (var i = 0; i < results.length; i++) {
+    var res = results[i];
+    var risk = res.port < res.annualExp * 5 ? 'red' : res.port < res.annualExp * 10 ? 'gold' : 'green';
+    var baseLabel = res.isBase ? ' ★ current' : '';
+    cards += '<div class="card ' + risk + '">' +
+      '<div class="card-label">' + res.rate + '% return' + baseLabel + '</div>' +
+      '<div class="card-value">' + fmtK(res.port) + '</div>' +
+      '<div class="card-sub">Portfolio age ' + (INP.life||85) + '</div></div>';
+    var bg = res.isBase ? '#e8f4ee' : (i%2===0 ? '#f0ebe0' : '#faf7f2');
+    if (res.port < res.annualExp * 5) bg = '#fdecea';
+    rows += '<tr style="background:' + bg + '">' +
+      '<td style="font-weight:700;color:var(--navy)">' + res.rate + '%' + (res.isBase?' ★':'') + '</td>' +
+      '<td style="font-weight:600">' + fmtK(res.port) + '</td>' +
+      '<td>' + fmtK(res.nw) + '</td>' +
+      '<td style="color:var(--green2);font-weight:600">' + fmtK(res.roth) + '</td>' +
+      '<td style="color:var(--muted)">' + (res.port / res.annualExp).toFixed(1) + ' yrs</td>' +
+      '</tr>';
+  }
+  var el = $('growth-stress-cards');
+  if (el) el.innerHTML = cards;
+  var tbl = $('growth-stress-table');
+  if (tbl) tbl.innerHTML =
+    '<div class="tbl-wrap"><table style="min-width:400px"><thead><tr>' +
+    '<th style="text-align:left">Growth Rate</th>' +
+    '<th>Portfolio at ' + (INP.life||85) + '</th>' +
+    '<th>Net Worth</th>' +
+    '<th>Roth Balance</th>' +
+    '<th>Expense coverage</th>' +
+    '</tr></thead><tbody>' + rows + '</tbody></table></div>' +
+    '<div style="font-size:11px;color:var(--muted);margin-top:6px">★ = your current growth rate · At 4% (conservative), portfolio still covers expenses comfortably with your asset base.</div>';
+}
+
+// ── INFLATION STRESS TEST ────────────────────────────────────────────────────
+function renderInflationStress(INP) {
+  var rates = [2, 3, 4, 5];
+  var baseRate = (INP.infl * 100).toFixed(1);
+  var results = [];
+  for (var ri = 0; ri < rates.length; ri++) {
+    var r = calc({ infl: rates[ri] / 100 });
+    var retR = r.rows.filter(function(x){ return !x.isWorking; });
+    var last = retR[retR.length - 1];
+    var annualExpAtEnd = INP.living * 12 * Math.pow(1 + rates[ri]/100, (INP.life||85) - (INP.ret||65));
+    results.push({
+      rate: rates[ri],
+      port: last ? last.totalPort : 0,
+      nw: last ? last.netWorth : 0,
+      roth: last ? last.rothBal + last.rothSpBal : 0,
+      expAtEnd: annualExpAtEnd,
+      isBase: Math.abs(rates[ri] - INP.infl * 100) < 0.1
+    });
+  }
+
+  var cards = '', rows = '';
+  for (var i = 0; i < results.length; i++) {
+    var res = results[i];
+    var yearsLeft = res.port > 0 ? (res.port / res.annualExpAtEnd).toFixed(1) : '0';
+    var risk = res.port < res.expAtEnd * 5 ? 'red' : res.port < res.expAtEnd * 10 ? 'gold' : 'green';
+    var baseLabel = res.isBase ? ' ★ current' : '';
+    cards += '<div class="card ' + risk + '">' +
+      '<div class="card-label">' + res.rate + '% inflation' + baseLabel + '</div>' +
+      '<div class="card-value">' + fmtK(res.port) + '</div>' +
+      '<div class="card-sub">Portfolio age ' + (INP.life||85) + '</div></div>';
+    var bg = res.isBase ? '#e8f4ee' : (i%2===0 ? '#f0ebe0' : '#faf7f2');
+    if (res.port < res.expAtEnd * 5) bg = '#fdecea';
+    rows += '<tr style="background:' + bg + '">' +
+      '<td style="font-weight:700;color:var(--navy)">' + res.rate + '%' + (res.isBase?' ★':'') + '</td>' +
+      '<td style="font-weight:600">' + fmtK(res.port) + '</td>' +
+      '<td>' + fmtK(res.nw) + '</td>' +
+      '<td style="color:var(--green2);font-weight:600">' + fmtK(res.roth) + '</td>' +
+      '<td style="color:var(--muted)">' + fmtK(Math.round(res.expAtEnd)) + '/yr</td>' +
+      '<td>' + (res.port > 0 ? (res.port / res.expAtEnd).toFixed(1) + ' yrs' : '—') + '</td>' +
+      '</tr>';
+  }
+
+  var el = $('inflation-stress-cards');
+  if (el) el.innerHTML = cards;
+  var tbl = $('inflation-stress-table');
+  if (tbl) tbl.innerHTML =
+    '<div class="tbl-wrap"><table style="min-width:480px"><thead><tr>' +
+    '<th style="text-align:left">Inflation</th>' +
+    '<th>Portfolio at ' + (INP.life||85) + '</th>' +
+    '<th>Net Worth</th>' +
+    '<th>Roth Balance</th>' +
+    '<th>Annual Exp (final yr)</th>' +
+    '<th>Coverage (yrs left)</th>' +
+    '</tr></thead><tbody>' + rows + '</tbody></table></div>' +
+    '<div style="font-size:11px;color:var(--muted);margin-top:6px">★ = your current inflation setting · Higher inflation increases expenses faster than SS COLA covers, drawing down portfolio sooner.</div>';
+}
+
 function runAll() {
   // Highlight selected withdrawal option
   var labelA = $('wd-opt-a-label'), labelB = $('wd-opt-b-label');
@@ -2231,6 +2568,8 @@ function runAll() {
   renderTaxTrend(result.rows, result.INP);
   renderLongevity(result.INP);
   renderMortgageCompare(result.INP);
+  renderInflationStress(result.INP);
+  renderGrowthStress(result.INP);
 }
 
 calcAgeFromDOB();  // compute ages from DOBs then run all tabs
