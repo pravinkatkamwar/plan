@@ -31,6 +31,7 @@ body {
   background: var(--cream);
   color: var(--text);
   font-size: 14px;
+  font-weight: 450;
   line-height: 1.5;
 }
 
@@ -140,6 +141,15 @@ header p {
   gap: 8px;
 }
 @media (max-width: 480px) { .input-grid { grid-template-columns: 1fr; } }
+@media (max-width: 600px) {
+  body { font-size: 15px; font-weight: 500; }
+  .tab-btn { font-size: 12px; padding: 8px 10px; }
+  .card-value { font-size: 18px; font-weight: 700; }
+  .card-label { font-size: 11px; font-weight: 600; }
+  .card-sub { font-size: 11px; }
+  tbody td { font-size: 13px; }
+  thead th { font-size: 12px; }
+}
 
 .input-row {
   display: flex;
@@ -503,6 +513,7 @@ tbody td.tax-cell  { color: var(--red); }
   <div class="input-grid">
     <div class="input-row"><label>Monthly Living Expenses ($)</label><input type="number" id="i_living" value="7000"></div>
     <div class="input-row"><label>Mortgage Monthly ($)</label><input type="number" id="i_mortgage" value="2250"></div>
+    <div class="input-row"><label>Pay Off Mortgage at Retirement</label><input type="checkbox" id="i_payoff_mortgage" onchange="runAll()" style="width:auto;height:24px;margin:0"></div>
     <div class="input-row"><label>Property Tax Annual ($)</label><input type="number" id="i_prop_tax" value="13500"></div>
     <div class="input-row"><label>Home Insurance Annual ($)</label><input type="number" id="i_home_ins" value="1500"></div>
     <div class="input-row"><label>Medicare Part B / mo ($)</label><input type="number" id="i_medicare" value="185"></div>
@@ -606,12 +617,42 @@ tbody td.tax-cell  { color: var(--red); }
       <tbody id="wd-body"></tbody>
     </table>
   </div>
+
+  <div class="section-title" style="margin-top:18px">HSA Depletion Timeline</div>
+  <div class="note" style="margin-bottom:10px">HSA covers <strong>your Medicare Part B + IRMAA only</strong> (IRS-qualified, tax-free). Once depleted, Medicare premiums must come from taxable withdrawals. Shows year-by-year draw and projected depletion.</div>
+  <div id="hsa-depletion-cards" class="cards" style="margin-bottom:10px"></div>
+  <div class="tbl-wrap"><table style="min-width:500px">
+    <thead><tr>
+      <th>Age</th><th>HSA Start</th><th>Growth</th><th>Your Medicare Draw</th><th>HSA End</th><th>Status</th>
+    </tr></thead>
+    <tbody id="hsa-depletion-body"></tbody>
+  </table></div>
 </div>
 
 <!-- PORTFOLIO -->
 <div id="tab-portfolio" class="panel">
   <div id="pg-summary" class="cards"></div>
-  <div class="section-title">Portfolio Balance Projection</div>
+
+  <div class="section-title">Pre-Retirement Accumulation (Working Years)</div>
+  <div id="pg-accum-summary" class="cards" style="margin-bottom:10px"></div>
+  <div class="tbl-wrap" id="pg-accum-wrap">
+    <table style="min-width:700px">
+      <thead><tr>
+        <th>Age</th>
+        <th>Status</th>
+        <th>Your 401k Contrib</th>
+        <th>Company Match</th>
+        <th>HSA Contrib</th>
+        <th>Total Added</th>
+        <th>Portfolio Growth</th>
+        <th>Total Portfolio (EOY)</th>
+        <th>Net Worth +Home</th>
+      </tr></thead>
+      <tbody id="pg-accum-body"></tbody>
+    </table>
+  </div>
+
+  <div class="section-title" style="margin-top:18px">Full Portfolio Balance Projection</div>
   <div class="tbl-wrap">
     <table>
       <thead><tr>
@@ -619,11 +660,22 @@ tbody td.tax-cell  { color: var(--red); }
         <th>Wife Roth IRA</th><th>Wife Trad (IRA+401k)</th><th>HSA</th><th>Brokerage</th>
         <th>Total Portfolio</th><th>Net Worth +Home</th>
       </tr></thead>
-      <caption style="caption-side:bottom;font-size:11px;color:#888;padding:4px 0">Your Roth + Wife Roth are treated as one combined pool for withdrawal sequencing</caption>
+      <caption style="caption-side:bottom;font-size:11px;color:#888;padding:4px 0">Your Roth + Wife Roth are treated as one combined pool for withdrawal sequencing &middot; <span style="background:#eaf0fb;padding:1px 5px;border-radius:3px">Blue rows</span> = working years &middot; <span style="background:#fff0e8;padding:1px 5px;border-radius:3px">Orange rows</span> = RMD years</caption>
       <tbody id="pg-body"></tbody>
     </table>
   </div>
   <div id="estate-box" class="advice-box" style="margin-top:14px"></div>
+
+  <div class="section-title" style="margin-top:18px">Longevity Sensitivity</div>
+  <div class="note" style="margin-bottom:10px">Portfolio balance if you live longer than planned. Uses the same withdrawal and conversion strategy, just extended. Flags when the portfolio may run low.</div>
+  <div id="longevity-cards" class="cards" style="margin-bottom:10px"></div>
+  <div id="longevity-table"></div>
+
+  <div id="mortgage-compare-section">
+    <div class="section-title" style="margin-top:18px">Mortgage Payoff Impact</div>
+    <div class="note" style="margin-bottom:10px">Compares carrying the mortgage vs. paying it off at retirement. Toggle the checkbox in Inputs → Expenses to switch the model.</div>
+    <div id="mortgage-compare-box"></div>
+  </div>
 </div>
 
 <!-- SOCIAL SECURITY -->
@@ -641,6 +693,18 @@ tbody td.tax-cell  { color: var(--red); }
     </table>
   </div>
   <div id="ss-verdict" class="note" style="margin-top:12px"></div>
+
+  <div class="section-title" style="margin-top:18px">Break-Even Age Calculator</div>
+  <div class="note" style="margin-bottom:12px">When does waiting to age 70 actually pay off? This accounts for the <strong>opportunity cost</strong> of bridge assets — the SS income you forego while waiting is invested at your growth rate. The break-even is the age where cumulative Age 70 benefits surpass the alternative on a total-wealth basis.</div>
+  <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:14px;padding:10px 12px;background:#f0ebe0;border-radius:6px;border:1px solid #d4c9b8">
+    <label style="font-size:13px;font-weight:600;color:var(--navy)">Bridge Return Rate:</label>
+    <input type="range" id="ss_bridge_rate" min="2" max="10" value="6" step="0.5" oninput="updateBridgeRate()" style="width:140px;accent-color:var(--navy2)">
+    <span id="ss_bridge_rate_lbl" style="font-size:13px;font-weight:700;color:var(--navy);min-width:36px">6.0%</span>
+    <span style="font-size:11px;color:var(--muted)">(return earned on foregone SS if invested)</span>
+  </div>
+  <div id="ss-breakeven-wrap" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px"></div>
+  <div id="ss-breakeven-chart" style="margin-bottom:8px"></div>
+  <div id="ss-breakeven-note" class="note" style="margin-top:10px"></div>
 </div>
 
 <!-- RMD -->
@@ -667,6 +731,10 @@ tbody td.tax-cell  { color: var(--red); }
     <select id="tax_age_sel" onchange="renderTaxProj(window._lastRows, window._lastINP)" style="background:#1e2d45;color:#e8c96a;border:1px solid #3a5070;padding:6px 10px;border-radius:4px;font-size:13px"></select>
   </div>
   <div id="taxproj-content"></div>
+
+  <div class="section-title" style="margin-top:18px">Effective Tax Rate Trend</div>
+  <div class="note" style="margin-bottom:10px">Effective federal rate (federal tax ÷ taxable income) and total rate (fed + state ÷ gross income) across all retirement years. Markers show when SS starts and RMDs begin.</div>
+  <div id="tax-trend-chart" style="overflow-x:auto;margin-bottom:6px"></div>
 </div>
 
 <!-- MONTE CARLO -->
@@ -847,7 +915,7 @@ function calcStateTax(INP, age, ss_taxable, convAmt, tradDrawAmt) {
   return (ss_taxable + convAmt + tradDrawAmt) * INP.state_rate;
 }
 
-function calc() {
+function calc(overrides) {
   var INP = {
     age:      v('i_age'),
     life:     v('i_life') || 85,
@@ -879,6 +947,7 @@ function calc() {
     medicare: v('i_medicare'),
     sp_ins:   v('i_sp_ins'),
     sp_salary:  v('i_sp_salary'),
+    ret:        v('i_ret') || 65,
     sp_ret:     v('i_sp_ret'),
     sp_401k:    v('i_sp_401k'),
     sp_contrib: v('i_sp_contrib'),
@@ -891,8 +960,12 @@ function calc() {
     ss_cola:         (v('i_ss_cola') || 2.5) / 100,
     med_infl:        (v('i_med_infl') || 5.0) / 100,
     avoid_irmaa:     !!($('i_avoid_irmaa') && $('i_avoid_irmaa').checked),
+    payoff_mortgage: !!($('i_payoff_mortgage') && $('i_payoff_mortgage').checked),
     wd_order:        ($('i_wd_order_b') && $('i_wd_order_b').checked) ? 'brok_roth' : 'roth_brok'
   };
+
+  // Apply any overrides (used by longevity/mortgage comparison renderers)
+  if (overrides) { var _k = Object.keys(overrides); for (var _i=0;_i<_k.length;_i++) INP[_k[_i]] = overrides[_k[_i]]; }
 
   var ssMonthly = INP.ss_age === 65 ? INP.ss65 : (INP.ss_age === 70 ? INP.ss70 : INP.ss67);
   var ss_yr = ssMonthly * 12;
@@ -923,6 +996,25 @@ function calc() {
   var rows = [];
   var numYears = INP.life - INP.age; // dynamic: from current age to life expectancy
 
+  // Seed "today" row: current balances before any growth (age = INP.age)
+  var seedTrad = INP.trad401k, seedRoth = INP.roth401k + INP.roth_ira;
+  var seedRothSp = INP.roth_sp, seedTradSp = INP.trad_sp + INP.sp_401k;
+  var seedHSA = INP.hsa, seedBrok = INP.brok;
+  var seedTotal = seedTrad + seedRoth + seedRothSp + seedTradSp + seedHSA + seedBrok;
+  rows.push({
+    age: INP.age, isRMD: false, isWorking: true, isSeed: true,
+    tradStart: seedTrad, tradEnd: seedTrad, tradBal: seedTrad,
+    rothBal: seedRoth, rothSpBal: seedRothSp, tradSpBal: seedTradSp,
+    hsaBal: seedHSA, brokBal: seedBrok, totalPort: seedTotal,
+    netWorth: seedTotal + 650000,
+    yourContrib: 0, matchAmt: 0, hsaContrib: 0, totalContrib: 0, portGrowthAmt: 0,
+    ss: 0, ss_taxable: 0, conv: 0, totalTaxable: INP.salary, ft: 0, effRate: 0,
+    living: 0, housing: 0, propIns: 0, spIns: 0, medicareYr: 0, spMedicareYr: 0,
+    totalNeeds: 0, ss_income: 0, sp_ss: 0, totalSS: 0,
+    brokDraw: 0, rothDraw: 0, tradDraw: 0, hsaPay: 0, irmaaYr: 0, surplus: 0,
+    stateTax: 0, stateTaxBase: 0
+  });
+
   for (var i = 0; i < numYears; i++) {
     var age   = INP.age + 1 + i;                    // start one year ahead of current age
     var inflF = Math.pow(1 + INP.infl, i);
@@ -943,6 +1035,9 @@ function calc() {
       var newBrok  = brok  * (1 + INP.growth);
       var totalPort= tradEnd + newRoth + newRothSp + newTradSp + newHSA + newBrok;
 
+      var yourContrib = INP.contrib;
+      var matchAmt    = INP.salary * INP.match;
+      var hsaContrib  = INP.hsa_c;
       rows.push({
         age: age, isRMD: false, isWorking: true,
         tradStart: trad, ss: 0, ss_taxable: 0, conv: 0,
@@ -955,7 +1050,10 @@ function calc() {
         stateTax: 0, stateTaxBase: 0,
         tradBal: tradEnd, rothBal: newRoth, rothSpBal: newRothSp, tradSpBal: newTradSp,
         hsaBal: newHSA, brokBal: newBrok, totalPort: totalPort,
-        netWorth: totalPort + 650000
+        netWorth: totalPort + 650000,
+        yourContrib: yourContrib, matchAmt: matchAmt, hsaContrib: hsaContrib,
+        totalContrib: yourContrib + matchAmt + hsaContrib,
+        portGrowthAmt: totalPort - (trad + roth + rothSp + tradSp + hsa + brok) - yourContrib - matchAmt - hsaContrib - spContrib
       });
 
       magiQ.push(INP.salary + (spouseWorking ? INP.sp_salary : 0)); magiQ.shift();
@@ -982,7 +1080,7 @@ function calc() {
       var newTradSp    = (tradSp + spContrib) * (1 + INP.growth);
 
       var living     = INP.living * 12 * inflF;
-      var housing    = INP.mortgage * 12;
+      var housing    = INP.payoff_mortgage ? 0 : INP.mortgage * 12;
       var propIns    = (INP.prop_tax + INP.home_ins) * inflF;
       var priorMAGI  = magiQ[0];
       var irmaaYr    = age >= 65 ? irmaa(priorMAGI) : 0;
@@ -1247,12 +1345,68 @@ function renderWithdrawal(rows, INP) {
 
 function renderPortfolio(rows, INP) {
   var last = rows[rows.length-1];
+  var workRows  = rows.filter(function(r){ return r.isWorking; });
+  var seedRow   = rows.find(function(r){ return r.isSeed; });
+  var firstRetRow = rows.find(function(r){ return !r.isWorking; });
+
+  // ── Pre-retirement summary cards ────────────────────────────────────────
+  var totalContribAdded = 0, totalMatchAdded = 0, totalHSAAdded = 0;
+  for (var i=0;i<workRows.length;i++) {
+    if (workRows[i].isSeed) continue;
+    totalContribAdded += workRows[i].yourContrib || 0;
+    totalMatchAdded   += workRows[i].matchAmt || 0;
+    totalHSAAdded     += workRows[i].hsaContrib || 0;
+  }
+  var portAtRetirement = firstRetRow ? firstRetRow.totalPort : 0;
+  var portToday = seedRow ? seedRow.totalPort : 0;
+  var accumGain = portAtRetirement - portToday;
+
+  $('pg-accum-summary').innerHTML =
+    '<div class="card green"><div class="card-label">Portfolio at Retirement</div><div class="card-value">' + fmtK(portAtRetirement) + '</div><div class="card-sub">Starting balance for withdrawals</div></div>' +
+    '<div class="card gold"><div class="card-label">Your 401k Contributions</div><div class="card-value">' + fmtK(totalContribAdded) + '</div><div class="card-sub">Pre-tax, working years</div></div>' +
+    '<div class="card gold"><div class="card-label">Company Match Added</div><div class="card-value">' + fmtK(totalMatchAdded) + '</div><div class="card-sub">Free money (' + (INP.match*100).toFixed(0) + '% of salary)</div></div>' +
+    '<div class="card green"><div class="card-label">Total Gain (growth + contrib)</div><div class="card-value">' + fmtK(accumGain) + '</div><div class="card-sub">vs today&#39;s balances</div></div>';
+
+  // ── Pre-retirement accumulation table ───────────────────────────────────
+  var accumTbody = $('pg-accum-body');
+  if (accumTbody) {
+    accumTbody.innerHTML = '';
+    for (var i=0;i<workRows.length;i++) {
+      var r = workRows[i];
+      var tr = document.createElement('tr');
+      tr.className = r.isSeed ? '' : 'working-row';
+      var statusLabel = r.isSeed ? '<span style="color:var(--navy);font-weight:700">Today</span>' : '<span style="color:#3a6aad;font-weight:600">Working</span>';
+      var prevPort = i === 0 ? 0 : workRows[i-1].totalPort;
+      var growthAmt = r.isSeed ? 0 : Math.round(r.totalPort - prevPort - (r.yourContrib||0) - (r.matchAmt||0) - (r.hsaContrib||0));
+      tr.innerHTML =
+        '<td style="font-weight:700;color:var(--navy)">' + r.age + (r.isSeed ? ' ★' : '') + '</td>' +
+        '<td>' + statusLabel + '</td>' +
+        '<td style="color:var(--navy2);font-weight:600">' + (r.isSeed ? '—' : fmt(r.yourContrib)) + '</td>' +
+        '<td style="color:var(--green2);font-weight:600">' + (r.isSeed ? '—' : fmt(r.matchAmt)) + '</td>' +
+        '<td style="color:var(--navy2);font-weight:600">' + (r.isSeed ? '—' : fmt(r.hsaContrib)) + '</td>' +
+        '<td style="font-weight:700;color:var(--navy)">' + (r.isSeed ? '—' : fmt((r.yourContrib||0)+(r.matchAmt||0)+(r.hsaContrib||0))) + '</td>' +
+        '<td style="color:var(--green);font-weight:600">' + (r.isSeed ? '—' : fmt(growthAmt)) + '</td>' +
+        '<td><strong>' + fmt(r.totalPort) + '</strong></td>' +
+        '<td>' + fmt(r.netWorth) + '</td>';
+      accumTbody.appendChild(tr);
+    }
+    // Add a retirement-start separator row
+    if (firstRetRow) {
+      var sepTr = document.createElement('tr');
+      sepTr.style.background = '#e8f4ee';
+      sepTr.innerHTML = '<td style="font-weight:700;color:var(--green)">Age ' + firstRetRow.age + '</td>' +
+        '<td colspan="6" style="text-align:left;font-style:italic;color:var(--green);font-weight:600">↓ Retirement begins — withdrawals start</td>' +
+        '<td style="font-weight:700;color:var(--green)">' + fmt(firstRetRow.totalPort) + '</td>' +
+        '<td>' + fmt(firstRetRow.netWorth) + '</td>';
+      accumTbody.appendChild(sepTr);
+    }
+  }
 
   $('pg-summary').innerHTML =
-    '<div class="card gold"><div class="card-label">Total Portfolio Age 85</div><div class="card-value">' + fmtK(last.totalPort) + '</div><div class="card-sub">All accounts</div></div>' +
-    '<div class="card green"><div class="card-label">Roth at Age 85</div><div class="card-value">' + fmtK(last.rothBal + last.rothSpBal) + '</div><div class="card-sub">Tax-free to heirs</div></div>' +
-    '<div class="card gold"><div class="card-label">Net Worth Age 85</div><div class="card-value">' + fmtK(last.netWorth) + '</div><div class="card-sub">Incl. $650k home</div></div>' +
-    '<div class="card green"><div class="card-label">HSA at Age 85</div><div class="card-value">' + fmtK(last.hsaBal) + '</div><div class="card-sub">Medical reserve</div></div>';
+    '<div class="card gold"><div class="card-label">Total Portfolio Age ' + INP.life + '</div><div class="card-value">' + fmtK(last.totalPort) + '</div><div class="card-sub">All accounts</div></div>' +
+    '<div class="card green"><div class="card-label">Roth at Age ' + INP.life + '</div><div class="card-value">' + fmtK(last.rothBal + last.rothSpBal) + '</div><div class="card-sub">Tax-free to heirs</div></div>' +
+    '<div class="card gold"><div class="card-label">Net Worth Age ' + INP.life + '</div><div class="card-value">' + fmtK(last.netWorth) + '</div><div class="card-sub">Incl. $650k home</div></div>' +
+    '<div class="card green"><div class="card-label">HSA at Age ' + INP.life + '</div><div class="card-value">' + fmtK(last.hsaBal) + '</div><div class="card-sub">Medical reserve</div></div>';
 
   var tbody = $('pg-body');
   tbody.innerHTML = '';
@@ -1263,7 +1417,7 @@ function renderPortfolio(rows, INP) {
     else if (r.isWorking) tr.className = 'working-row';
     else if (r.isRMD)     tr.className = 'rmd-row';
     tr.innerHTML =
-      '<td>' + r.age + '</td>' +
+      '<td>' + r.age + (r.isSeed ? ' ★' : '') + '</td>' +
       '<td>' + fmt(r.tradBal) + '</td>' +
       '<td>' + fmt(r.rothBal) + '</td>' +
       '<td>' + fmt(r.rothSpBal) + '</td>' +
@@ -1373,6 +1527,131 @@ function renderSS(INP) {
     'Spouse starts collecting when you are age <strong>' + primary_age_when_sp_ss + '</strong>. ' +
     'Annual benefit (yr 1): <strong>' + fmt(sp_mo_benefit * 12) + '/yr</strong>. ' +
     'Note: wife cannot collect SS until you have filed for your own benefit.';
+
+  // ── BREAK-EVEN CALCULATOR ─────────────────────────────────────────────────
+  renderSSBreakeven(INP);
+}
+
+function renderSSBreakeven(INP) {
+  var bridgeEl = $('ss_bridge_rate');
+  var bridgeRate = bridgeEl ? parseFloat(bridgeEl.value) / 100 : 0.06;
+  var cola = INP.ss_cola || 0.025;
+
+  // For each comparison pair: compute year-by-year cumulative wealth difference
+  // Scenario A (early): collects SS from startA, foregoes nothing
+  // Scenario B (age 70): waits — during delay years, the foregone SS would have been invested
+  // Cumulative wealth A at age t = sum of COLA-adjusted SS from startA to t, plus growth on earlier receipts
+  // Cumulative wealth B at age t = sum of COLA-adjusted SS from 70 to t, plus growth on earlier receipts
+  //   minus: opportunity cost = bridge assets that were used instead of SS (foregone SS invested at bridgeRate)
+  // We track: running wealth for each scenario; break-even when B > A
+
+  function calcCumulative(startAge, monthlyBase, compareAge, bridgeRate, cola) {
+    // Returns array of {age, cumA, cumB, diff} from startAge to 95
+    // A = claim at startAge; B = wait to compareAge (70)
+    var results = [];
+    var wealthA = 0, wealthB = 0;
+    var minStart = Math.min(startAge, compareAge);
+    var maxAge = 95;
+
+    for (var age = minStart; age <= maxAge; age++) {
+      // SS income this year for each scenario
+      var ssA = age >= startAge ? monthlyBase * 12 * Math.pow(1 + cola, age - startAge) : 0;
+      var ssB = age >= compareAge ? INP.ss70 * 12 * Math.pow(1 + cola, age - compareAge) : 0;
+
+      // Grow existing wealth by bridge rate, then add this year's SS
+      wealthA = wealthA * (1 + bridgeRate) + ssA;
+      wealthB = wealthB * (1 + bridgeRate) + ssB;
+
+      if (age >= startAge) {
+        results.push({ age: age, cumA: Math.round(wealthA), cumB: Math.round(wealthB), diff: Math.round(wealthB - wealthA) });
+      }
+    }
+    return results;
+  }
+
+  var data65 = calcCumulative(65, INP.ss65, 70, bridgeRate, cola);
+  var data67 = calcCumulative(67, INP.ss67, 70, bridgeRate, cola);
+
+  function findBreakeven(data) {
+    for (var i = 0; i < data.length; i++) {
+      if (data[i].diff > 0) return data[i].age;
+    }
+    return null;
+  }
+
+  var be65 = findBreakeven(data65);
+  var be67 = findBreakeven(data67);
+
+  // Summary cards
+  var makeCard = function(vsAge, beAge, monthly_early, monthly_late) {
+    var gap = monthly_late * 12 - monthly_early * 12;
+    var bridgeYrs = 70 - vsAge;
+    var color = beAge && beAge <= 82 ? '#2d6a4f' : beAge && beAge <= 87 ? '#b56a00' : '#b5231a';
+    var bgColor = beAge && beAge <= 82 ? '#e8f5e9' : beAge && beAge <= 87 ? '#fff8e6' : '#fdecea';
+    var verdict = beAge ? (beAge <= 82 ? '✓ Worth waiting' : beAge <= 87 ? '~ Marginal' : '✗ Very long wait') : '✗ Never (to age 95)';
+    return '<div style="background:' + bgColor + ';border:1px solid ' + color + ';border-radius:8px;padding:14px 16px">' +
+      '<div style="font-size:11px;font-weight:700;color:' + color + ';text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">Age 70 vs Age ' + vsAge + '</div>' +
+      '<div style="font-size:28px;font-weight:700;color:' + color + ';margin-bottom:2px">' + (beAge ? 'Age ' + beAge : 'Never') + '</div>' +
+      '<div style="font-size:11px;color:#555;margin-bottom:10px">break-even age (with ' + (bridgeRate*100).toFixed(1) + '% bridge return)</div>' +
+      '<div style="font-size:11px;color:#555;border-top:1px solid ' + color + ';padding-top:8px;margin-top:4px">' +
+      'Wait ' + bridgeYrs + ' yrs for +' + fmt(gap) + '/yr more (yr 1)<br>' +
+      '<strong style="color:' + color + '">' + verdict + '</strong>' +
+      '</div></div>';
+  };
+
+  $('ss-breakeven-wrap').innerHTML =
+    makeCard(65, be65, INP.ss65, INP.ss70) +
+    makeCard(67, be67, INP.ss67, INP.ss70);
+
+  // ASCII-style year-by-year table for key ages
+  var keyAges = [70,72,74,76,78,80,82,84,86,88,90];
+  var tbl = '<div class="tbl-wrap"><table style="min-width:500px">' +
+    '<thead><tr>' +
+    '<th style="text-align:left">Age</th>' +
+    '<th>Cumulative: Age 65 path</th>' +
+    '<th>Cumulative: Age 70 path</th>' +
+    '<th>70 advantage vs 65</th>' +
+    '<th>Cumulative: Age 67 path</th>' +
+    '<th>70 advantage vs 67</th>' +
+    '</tr></thead><tbody>';
+
+  for (var i = 0; i < keyAges.length; i++) {
+    var a = keyAges[i];
+    var r65 = data65.find(function(x){ return x.age === a; });
+    var r67 = data67.find(function(x){ return x.age === a; });
+    if (!r65 || !r67) continue;
+    var isBE65 = be65 && a === be65;
+    var isBE67 = be67 && a === be67;
+    var rowBg = (i % 2 === 0) ? '#f0ebe0' : '#faf7f2';
+    if (isBE65 || isBE67) rowBg = '#e8f5e9';
+    var diff65Color = r65.diff > 0 ? '#2d6a4f' : '#b5231a';
+    var diff67Color = r67.diff > 0 ? '#2d6a4f' : '#b5231a';
+    tbl += '<tr style="background:' + rowBg + '">' +
+      '<td style="text-align:left;font-weight:700;color:var(--navy)">' + a + (isBE65 || isBE67 ? ' ← BE' : '') + '</td>' +
+      '<td>' + fmtK(r65.cumA) + '</td>' +
+      '<td>' + fmtK(r65.cumB) + '</td>' +
+      '<td style="font-weight:700;color:' + diff65Color + '">' + (r65.diff >= 0 ? '+' : '') + fmtK(r65.diff) + '</td>' +
+      '<td>' + fmtK(r67.cumA) + '</td>' +
+      '<td style="font-weight:700;color:' + diff67Color + '">' + (r67.diff >= 0 ? '+' : '') + fmtK(r67.diff) + '</td>' +
+      '</tr>';
+  }
+  tbl += '</tbody></table></div>';
+  $('ss-breakeven-chart').innerHTML = tbl;
+
+  var noteStr = '<strong>How to read this:</strong> "Cumulative" is the total SS wealth accumulated in each scenario, growing at the bridge rate (' + (bridgeRate*100).toFixed(1) + '%). ' +
+    'If you claim at 65, you collect for 5 more years but at a lower amount — that early money compounds. ' +
+    'Age 70 catches up when its higher annual benefit overcomes that head start. ' +
+    (be65 ? 'Age 70 beats Age 65 at age <strong>' + be65 + '</strong>. ' : '') +
+    (be67 ? 'Age 70 beats Age 67 at age <strong>' + be67 + '</strong>. ' : '') +
+    'Drag the bridge rate slider up to see how a higher return on invested assets pushes the break-even later.';
+  $('ss-breakeven-note').innerHTML = noteStr;
+}
+
+function updateBridgeRate() {
+  var el = $('ss_bridge_rate');
+  var lbl = $('ss_bridge_rate_lbl');
+  if (el && lbl) lbl.textContent = parseFloat(el.value).toFixed(1) + '%';
+  if (window._lastINP) renderSSBreakeven(window._lastINP);
 }
 
 function renderAdvice(rows, INP) {
@@ -1527,20 +1806,28 @@ function renderTaxProj(rows, INP) {
     ['Surplus / (Shortfall)', fmt(r.surplus), r.surplus >= 0 ? '✓ Funded' : '⚠ Shortfall']
   ];
 
-  var html = '<div class="tbl-wrap"><table>';
+  var rowIdx = 0;
+  var html = '<div class="tbl-wrap"><table style="min-width:340px">' +
+    '<thead><tr><th style="text-align:left;min-width:160px">Item</th><th style="text-align:right">Amount</th><th style="text-align:left">Note</th></tr></thead><tbody>';
   for (var i = 0; i < rows2.length; i++) {
     var isHeader = rows2[i][1] === '';
     if (isHeader) {
-      html += '<tr style="background:#1a2d42"><td colspan="3" style="color:#e8c96a;font-weight:700;font-family:Georgia,serif;padding:8px 10px;letter-spacing:0.5px">' + rows2[i][0] + '</td></tr>';
+      html += '<tr style="background:var(--navy)"><td colspan="3" style="color:var(--gold2);font-weight:700;font-family:var(--font-serif);padding:8px 10px;letter-spacing:0.5px;font-size:13px;text-transform:uppercase">' + rows2[i][0] + '</td></tr>';
+      rowIdx = 0;
     } else {
-      var valColor = rows2[i][0].includes('Tax') && !rows2[i][0].includes('Rate') && !rows2[i][0].includes('Taxable') && !rows2[i][0].includes('IRMAA') ? '#e05c5c' :
-                     rows2[i][0].includes('Tax-free') || rows2[i][0].includes('Surplus') || rows2[i][0].includes('Net Spend') ? '#6fcf97' : '#e8c96a';
-      html += '<tr><td style="color:#c0cfe0;font-size:11px;padding:5px 10px">' + rows2[i][0] + '</td>' +
-        '<td style="font-family:\'Courier New\',monospace;font-size:12px;color:' + valColor + ';text-align:right;padding:5px 10px">' + rows2[i][1] + '</td>' +
-        '<td style="color:#7a8fa0;font-size:10px;padding:5px 10px">' + rows2[i][2] + '</td></tr>';
+      var isTaxAmt = rows2[i][0].includes('Tax') && !rows2[i][0].includes('Rate') && !rows2[i][0].includes('Taxable') && !rows2[i][0].includes('IRMAA');
+      var isGood   = rows2[i][0].includes('Tax-free') || rows2[i][0].includes('Surplus') || rows2[i][0].includes('Net Spend');
+      var valColor = isTaxAmt ? 'var(--red)' : isGood ? 'var(--green2)' : 'var(--navy)';
+      var valWeight = isTaxAmt || isGood ? '700' : '600';
+      var bg = (rowIdx % 2 === 0) ? '#f0ebe0' : '#faf7f2';
+      html += '<tr style="background:' + bg + '">' +
+        '<td style="text-align:left;font-weight:600;font-size:13px;color:var(--navy);padding:7px 10px;border-right:1px solid #e2d9cc">' + rows2[i][0] + '</td>' +
+        '<td style="font-family:var(--font-mono);font-size:13px;font-weight:' + valWeight + ';color:' + valColor + ';text-align:right;padding:7px 10px;border-right:1px solid #e2d9cc">' + rows2[i][1] + '</td>' +
+        '<td style="color:var(--muted);font-size:12px;padding:7px 10px">' + rows2[i][2] + '</td></tr>';
+      rowIdx++;
     }
   }
-  html += '</table></div>';
+  html += '</tbody></table></div>';
   $('taxproj-content').innerHTML = html;
 }
 
@@ -1696,6 +1983,228 @@ function renderSurvivor(rows, INP) {
     '<div class="card green"><div class="card-label">Estate at Age ' + INP.life + '</div><div class="card-value">' + fmtK(finalPort) + '</div><div class="card-sub">Survivor scenario</div></div>';
 }
 
+// ── HSA DEPLETION TIMELINE ────────────────────────────────────────────────
+function renderHSADepletion(rows, INP) {
+  var retRows = rows.filter(function(r){ return !r.isWorking; });
+  if (!retRows.length) return;
+
+  var depleteAge = null, totalDraw = 0;
+  var tbody = '', rowIdx = 0;
+  for (var i = 0; i < retRows.length; i++) {
+    var r = retRows[i];
+    var hsaStart = r.hsaBal + r.hsaPay; // reconstruct start = end + draw (approx)
+    var growth   = Math.round(r.hsaBal - (hsaStart - r.hsaPay));
+    var isDepleted = r.hsaBal <= 0 && r.hsaPay <= 0 && i > 0;
+    var wasActive  = r.hsaPay > 0;
+    if (wasActive) totalDraw += r.hsaPay;
+    if (!depleteAge && r.hsaBal <= 1 && i > 0) depleteAge = r.age;
+    var status = isDepleted ? '<span style="color:#b5231a;font-weight:700">Depleted</span>'
+               : r.hsaBal < r.hsaPay * 2 ? '<span style="color:#b56a00;font-weight:600">Low</span>'
+               : '<span style="color:#2d6a4f;font-weight:600">Active</span>';
+    var bg = (rowIdx % 2 === 0) ? '#f0ebe0' : '#faf7f2';
+    if (isDepleted) bg = '#fdecea';
+    else if (r.hsaBal < r.hsaPay * 2) bg = '#fff8e6';
+    tbody += '<tr style="background:' + bg + '">' +
+      '<td style="font-weight:700;color:var(--navy)">' + r.age + '</td>' +
+      '<td>' + fmt(hsaStart) + '</td>' +
+      '<td style="color:var(--green2)">' + fmt(Math.max(0, growth)) + '</td>' +
+      '<td style="color:var(--red);font-weight:600">' + (r.hsaPay > 0 ? fmt(r.hsaPay) : '—') + '</td>' +
+      '<td style="font-weight:600">' + (r.hsaBal > 0 ? fmt(r.hsaBal) : '$0') + '</td>' +
+      '<td>' + status + '</td></tr>';
+    rowIdx++;
+  }
+  if ($('hsa-depletion-body')) $('hsa-depletion-body').innerHTML = tbody;
+
+  var firstRetRow = retRows[0];
+  var lastActiveRow = retRows.filter(function(r){ return r.hsaPay > 0; });
+  var lastActive = lastActiveRow[lastActiveRow.length - 1];
+  $('hsa-depletion-cards').innerHTML =
+    '<div class="card green"><div class="card-label">HSA at Retirement</div><div class="card-value">' + fmtK(firstRetRow.hsaBal + firstRetRow.hsaPay) + '</div><div class="card-sub">Starting balance</div></div>' +
+    '<div class="card ' + (depleteAge ? 'red' : 'green') + '"><div class="card-label">HSA Depletes</div><div class="card-value">' + (depleteAge ? 'Age ' + depleteAge : 'Never') + '</div><div class="card-sub">' + (depleteAge ? 'Medicare paid from withdrawals after' : 'Outlasts plan horizon') + '</div></div>' +
+    '<div class="card gold"><div class="card-label">Total Medicare Paid (HSA)</div><div class="card-value">' + fmtK(totalDraw) + '</div><div class="card-sub">Tax-free qualified draw</div></div>' +
+    '<div class="card gold"><div class="card-label">HSA Growth Rate</div><div class="card-value">' + ((INP.growth || 0.08) * 100).toFixed(1) + '%/yr</div><div class="card-sub">Same as portfolio</div></div>';
+}
+
+// ── EFFECTIVE TAX RATE TREND CHART ───────────────────────────────────────
+function renderTaxTrend(rows, INP) {
+  var el = $('tax-trend-chart');
+  if (!el) return;
+  var retRows = rows.filter(function(r){ return !r.isWorking; });
+  if (!retRows.length) return;
+
+  var W = 680, H = 180, padL = 44, padR = 12, padT = 14, padB = 32;
+  var chartW = W - padL - padR, chartH = H - padT - padB;
+  var maxRate = 0;
+  retRows.forEach(function(r) {
+    var agi = r.ss_income + r.sp_ss + r.conv + r.tradDraw;
+    var total = agi > 0 ? (r.ft + r.stateTax) / agi * 100 : 0;
+    var fed   = r.totalTaxable > 0 ? r.ft / r.totalTaxable * 100 : 0;
+    if (total > maxRate) maxRate = total;
+    if (fed   > maxRate) maxRate = fed;
+  });
+  maxRate = Math.ceil(maxRate / 5) * 5 + 5;
+
+  var n = retRows.length;
+  var barW = Math.max(4, Math.floor(chartW / n) - 2);
+  var xStep = chartW / n;
+
+  var bars = '', lines = '', labels = '', gridLines = '', markers = '';
+
+  // Grid lines
+  for (var g = 0; g <= maxRate; g += 5) {
+    var gy = padT + chartH - (g / maxRate) * chartH;
+    gridLines += '<line x1="' + padL + '" y1="' + gy + '" x2="' + (W - padR) + '" y2="' + gy + '" stroke="#e2d9cc" stroke-width="0.5"/>';
+    gridLines += '<text x="' + (padL - 4) + '" y="' + (gy + 4) + '" font-size="9" fill="#888" text-anchor="end">' + g + '%</text>';
+  }
+
+  // Bars (fed rate) + line (total rate)
+  var linePoints = '', totalPoints = '';
+  for (var i = 0; i < retRows.length; i++) {
+    var r = retRows[i];
+    var cx = padL + i * xStep + xStep / 2;
+    var agi2 = r.ss_income + r.sp_ss + r.conv + r.tradDraw;
+    var fedRate   = r.totalTaxable > 0 ? r.ft / r.totalTaxable * 100 : 0;
+    var totalRate = agi2 > 0 ? (r.ft + r.stateTax) / agi2 * 100 : 0;
+
+    var bH = (fedRate / maxRate) * chartH;
+    var by = padT + chartH - bH;
+    var isRMD = r.isRMD;
+    var barColor = isRMD ? '#e8a87c' : '#5b7ec9';
+    bars += '<rect x="' + (cx - barW/2) + '" y="' + by + '" width="' + barW + '" height="' + bH + '" fill="' + barColor + '" opacity="0.75"/>';
+
+    var ty = padT + chartH - (totalRate / maxRate) * chartH;
+    if (i === 0) totalPoints = cx + ',' + ty;
+    else totalPoints += ' ' + cx + ',' + ty;
+
+    // SS and RMD age markers
+    if (r.age === INP.ss_age) {
+      markers += '<line x1="' + cx + '" y1="' + padT + '" x2="' + cx + '" y2="' + (padT + chartH) + '" stroke="#2d6a4f" stroke-width="1" stroke-dasharray="3,2"/>';
+      markers += '<text x="' + cx + '" y="' + (padT - 2) + '" font-size="8" fill="#2d6a4f" text-anchor="middle">SS</text>';
+    }
+    if (r.age === INP.rmd_age) {
+      markers += '<line x1="' + cx + '" y1="' + padT + '" x2="' + cx + '" y2="' + (padT + chartH) + '" stroke="#b56a00" stroke-width="1" stroke-dasharray="3,2"/>';
+      markers += '<text x="' + (cx + 3) + '" y="' + (padT - 2) + '" font-size="8" fill="#b56a00" text-anchor="middle">RMD</text>';
+    }
+
+    // Age labels every 5 years
+    if (r.age % 5 === 0) {
+      labels += '<text x="' + cx + '" y="' + (H - 4) + '" font-size="9" fill="#888" text-anchor="middle">' + r.age + '</text>';
+    }
+  }
+
+  var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;max-width:' + W + 'px;display:block" xmlns="http://www.w3.org/2000/svg">' +
+    gridLines + bars + markers +
+    '<polyline points="' + totalPoints + '" fill="none" stroke="#b5231a" stroke-width="1.5" stroke-linejoin="round"/>' +
+    labels +
+    '<text x="' + (padL + chartW / 2) + '" y="' + (H - 4) + '" font-size="9" fill="#888" text-anchor="middle">Age</text>' +
+    '<rect x="' + padL + '" y="' + (H - 14) + '" width="10" height="8" fill="#5b7ec9" opacity="0.75"/>' +
+    '<text x="' + (padL + 13) + '" y="' + (H - 7) + '" font-size="9" fill="#555">Fed rate (taxable)</text>' +
+    '<rect x="' + (padL + 100) + '" y="' + (H - 14) + '" width="10" height="8" fill="#e8a87c" opacity="0.75"/>' +
+    '<text x="' + (padL + 113) + '" y="' + (H - 7) + '" font-size="9" fill="#555">RMD years</text>' +
+    '<line x1="' + (padL + 180) + '" y1="' + (H - 10) + '" x2="' + (padL + 190) + '" y2="' + (H - 10) + '" stroke="#b5231a" stroke-width="1.5"/>' +
+    '<text x="' + (padL + 193) + '" y="' + (H - 7) + '" font-size="9" fill="#555">Total rate (all income)</text>' +
+    '</svg>';
+  el.innerHTML = svg;
+}
+
+// ── LONGEVITY SENSITIVITY ────────────────────────────────────────────────
+function renderLongevity(INP) {
+  var ages = [80, 85, 90, 95];
+  var results = [];
+
+  for (var ai = 0; ai < ages.length; ai++) {
+    var r = calc({ life: ages[ai] });
+    var rows = r.rows.filter(function(x){ return !x.isWorking; });
+    var last = rows[rows.length - 1];
+    var annualExp = INP.living * 12 * Math.pow(1 + INP.infl, ages[ai] - (INP.ret || 65));
+    results.push({
+      age: ages[ai],
+      port: last ? last.totalPort : 0,
+      nw: last ? last.netWorth : 0,
+      roth: last ? (last.rothBal + last.rothSpBal) : 0,
+      trad: last ? last.tradBal : 0,
+      annualExp: annualExp
+    });
+  }
+
+  var cards = '';
+  var tableRows = '';
+  for (var i = 0; i < results.length; i++) {
+    var res = results[i];
+    var yearsLeft = res.port > 0 ? (res.port / res.annualExp).toFixed(1) : '0';
+    var isBase = res.age === INP.life;
+    var risk = res.port < res.annualExp * 5 ? 'red' : res.port < res.annualExp * 10 ? 'gold' : 'green';
+    var riskLabel = res.port < res.annualExp * 5 ? '⚠ Low' : res.port < res.annualExp * 10 ? '~ Watch' : '✓ Strong';
+    if (isBase) {
+      cards += '<div class="card ' + risk + '"><div class="card-label">Age ' + res.age + ' (current plan)</div><div class="card-value">' + fmtK(res.port) + '</div><div class="card-sub">~' + yearsLeft + ' yrs expenses left</div></div>';
+    } else {
+      cards += '<div class="card ' + risk + '"><div class="card-label">Age ' + res.age + '</div><div class="card-value">' + fmtK(res.port) + '</div><div class="card-sub">' + riskLabel + ' · ~' + yearsLeft + ' yrs left</div></div>';
+    }
+    var bg = (i % 2 === 0) ? '#f0ebe0' : '#faf7f2';
+    if (res.port < res.annualExp * 5) bg = '#fdecea';
+    else if (isBase) bg = '#e8f4ee';
+    tableRows += '<tr style="background:' + bg + '">' +
+      '<td style="font-weight:700;color:var(--navy)">Age ' + res.age + (isBase ? ' ★' : '') + '</td>' +
+      '<td style="font-weight:600">' + fmtK(res.port) + '</td>' +
+      '<td>' + fmtK(res.nw) + '</td>' +
+      '<td style="color:var(--green2);font-weight:600">' + fmtK(res.roth) + '</td>' +
+      '<td>' + fmtK(res.trad) + '</td>' +
+      '<td>' + yearsLeft + ' yrs</td>' +
+      '<td>' + riskLabel + '</td></tr>';
+  }
+
+  if ($('longevity-cards')) $('longevity-cards').innerHTML = cards;
+  if ($('longevity-table')) $('longevity-table').innerHTML =
+    '<div class="tbl-wrap"><table style="min-width:560px"><thead><tr>' +
+    '<th style="text-align:left">Scenario</th><th>Portfolio</th><th>Net Worth</th>' +
+    '<th>Roth Balance</th><th>Trad 401k</th><th>Expenses coverage</th><th>Outlook</th>' +
+    '</tr></thead><tbody>' + tableRows + '</tbody></table></div>';
+}
+
+// ── MORTGAGE PAYOFF COMPARISON ────────────────────────────────────────────
+function renderMortgageCompare(INP) {
+  var el = $('mortgage-compare-box');
+  if (!el || INP.mortgage <= 0) { if(el) el.innerHTML = '<div class="note">No mortgage entered in Inputs.</div>'; return; }
+
+  var withMort   = calc({ payoff_mortgage: false });
+  var lastWith   = withMort.rows[withMort.rows.length - 1];
+
+  var withoutMort = calc({ payoff_mortgage: true });
+  var lastWithout = withoutMort.rows[withoutMort.rows.length - 1];
+
+  var annualSaving = INP.mortgage * 12;
+  var totalSaved = annualSaving * (INP.life - (INP.ret || 65));
+  var portDiff = lastWithout.totalPort - lastWith.totalPort;
+  var nwDiff   = lastWithout.netWorth  - lastWith.netWorth;
+
+  var html =
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:10px">' +
+    '<div style="background:#f0ebe0;border:1px solid #d4c9b8;border-radius:8px;padding:14px">' +
+    '<div style="font-size:11px;font-weight:700;color:#555;text-transform:uppercase;margin-bottom:8px">Carry Mortgage</div>' +
+    '<div style="font-size:22px;font-weight:700;color:var(--navy)">' + fmtK(lastWith.totalPort) + '</div>' +
+    '<div style="font-size:11px;color:#777">Portfolio at age ' + INP.life + '</div>' +
+    '<div style="font-size:12px;color:#555;margin-top:8px">' + fmt(annualSaving) + '/yr mortgage cost</div>' +
+    '</div>' +
+    '<div style="background:#e8f4ee;border:1px solid #40916c;border-radius:8px;padding:14px">' +
+    '<div style="font-size:11px;font-weight:700;color:#2d6a4f;text-transform:uppercase;margin-bottom:8px">Pay Off at Retirement</div>' +
+    '<div style="font-size:22px;font-weight:700;color:var(--green)">' + fmtK(lastWithout.totalPort) + '</div>' +
+    '<div style="font-size:11px;color:#777">Portfolio at age ' + INP.life + '</div>' +
+    '<div style="font-size:12px;color:var(--green2);font-weight:600;margin-top:8px">+' + fmtK(portDiff) + ' vs carrying</div>' +
+    '</div></div>' +
+    '<div class="tbl-wrap"><table style="min-width:400px"><thead><tr>' +
+    '<th style="text-align:left">Metric</th><th>Carry Mortgage</th><th>Pay Off at Retirement</th><th>Difference</th>' +
+    '</tr></thead><tbody>' +
+    '<tr style="background:#f0ebe0"><td style="text-align:left;font-weight:600">Monthly cost</td><td>' + fmt(INP.mortgage) + '/mo</td><td>$0</td><td style="color:var(--green2);font-weight:600">–' + fmt(INP.mortgage) + '/mo</td></tr>' +
+    '<tr style="background:#faf7f2"><td style="text-align:left;font-weight:600">Total interest avoided</td><td>—</td><td>' + fmtK(totalSaved) + '</td><td style="color:var(--green2);font-weight:600">+' + fmtK(totalSaved) + '</td></tr>' +
+    '<tr style="background:#f0ebe0"><td style="text-align:left;font-weight:600">Portfolio age ' + INP.life + '</td><td>' + fmtK(lastWith.totalPort) + '</td><td>' + fmtK(lastWithout.totalPort) + '</td><td style="color:' + (portDiff>=0?'var(--green2)':'var(--red)') + ';font-weight:700">' + (portDiff>=0?'+':'') + fmtK(portDiff) + '</td></tr>' +
+    '<tr style="background:#faf7f2"><td style="text-align:left;font-weight:600">Net worth age ' + INP.life + '</td><td>' + fmtK(lastWith.netWorth) + '</td><td>' + fmtK(lastWithout.netWorth) + '</td><td style="color:' + (nwDiff>=0?'var(--green2)':'var(--red)') + ';font-weight:700">' + (nwDiff>=0?'+':'') + fmtK(nwDiff) + '</td></tr>' +
+    '</tbody></table></div>' +
+    '<div class="note" style="margin-top:8px">Note: paying off the mortgage frees up cash flow which the model redirects to reduce withdrawals, leaving more to compound. The lump-sum payoff itself is not modeled — this shows the <em>ongoing cash flow</em> benefit only.</div>';
+
+  el.innerHTML = html;
+}
+
+
 function runAll() {
   // Highlight selected withdrawal option
   var labelA = $('wd-opt-a-label'), labelB = $('wd-opt-b-label');
@@ -1718,6 +2227,10 @@ function runAll() {
   renderMonteCarlo(result.rows, result.INP);
   renderSurvivor(result.rows, result.INP);
   renderAdvice(result.rows, result.INP);
+  renderHSADepletion(result.rows, result.INP);
+  renderTaxTrend(result.rows, result.INP);
+  renderLongevity(result.INP);
+  renderMortgageCompare(result.INP);
 }
 
 calcAgeFromDOB();  // compute ages from DOBs then run all tabs
