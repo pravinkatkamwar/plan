@@ -14,10 +14,10 @@ window.RETIREMENT_INPUTS = {
   i_roth401k: 200000,
   i_contrib:  37500,
   i_match:    5,
-  i_roth_ira: 120000,
-  i_hsa:      107000,
+  i_roth_ira: 150000,
+  i_hsa:      135000,
   i_hsa_c:    8000,
-  i_brok:     1000000,
+  i_brok:     1050000,
 
   // ── Wife Details ──────────────────────────────────────────
   i_sp_dob:        "1971-01-16",
@@ -26,7 +26,7 @@ window.RETIREMENT_INPUTS = {
   i_sp_401k:       0,
   i_sp_contrib:    0,
   i_sp_match_rate: 0,
-  i_trad_sp:       76000,
+  i_trad_sp:       84000,
   i_roth_sp:       11000,
 
   // ── Growth & Social Security ──────────────────────────────
