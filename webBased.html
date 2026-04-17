@@ -379,9 +379,128 @@ tbody td.tax-cell  { color: var(--red); }
   font-weight: 700 !important;
   font-family: var(--font-mono) !important;
 }
+
+/* ── Landing chooser overlay ── */
+#launcher-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: linear-gradient(135deg, #0f2240 0%, #1a3a6b 60%, #0f2240 100%);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 24px;
+}
+#launcher-overlay h1 {
+  font-family: var(--font-serif);
+  font-size: clamp(18px, 4vw, 28px);
+  color: var(--gold2);
+  text-align: center;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+#launcher-overlay .launch-sub {
+  font-size: 12px;
+  color: #a0b0c8;
+  font-family: var(--font-mono);
+  text-align: center;
+  margin-bottom: 40px;
+}
+.launch-cards {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 100%;
+  max-width: 720px;
+}
+.launch-card {
+  flex: 1 1 260px;
+  max-width: 320px;
+  background: rgba(255,255,255,0.05);
+  border: 2px solid rgba(201,168,76,0.35);
+  border-radius: 14px;
+  padding: 32px 28px 28px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.18s, background 0.18s, transform 0.15s;
+  text-decoration: none;
+  display: block;
+  color: inherit;
+}
+.launch-card:hover {
+  border-color: var(--gold);
+  background: rgba(201,168,76,0.1);
+  transform: translateY(-3px);
+}
+.launch-card:active { transform: translateY(0); }
+.launch-card .lc-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  display: block;
+  line-height: 1;
+}
+.launch-card h2 {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  color: var(--gold2);
+  margin-bottom: 10px;
+}
+.launch-card p {
+  font-size: 12px;
+  color: #a0b8d0;
+  line-height: 1.6;
+}
+.launch-card .lc-badge {
+  display: inline-block;
+  margin-top: 18px;
+  padding: 7px 20px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  letter-spacing: 0.5px;
+}
+.lc-badge-web  { background: var(--gold);  color: #0f2240; }
+.lc-badge-xl   { background: #217346;      color: #ffffff; }
+.launch-footer {
+  margin-top: 32px;
+  font-size: 11px;
+  color: #5a7090;
+  font-family: var(--font-mono);
+  text-align: center;
+}
 </style>
 </head>
 <body>
+
+<!-- ── Launch chooser ── -->
+<div id="launcher-overlay">
+  <h1>&#x1F3E6; Retirement Planning Model</h1>
+  <p class="launch-sub">Pravin &nbsp;&middot;&nbsp; NJ &nbsp;&middot;&nbsp; Planning to Age 85</p>
+
+  <div class="launch-cards">
+
+    <!-- Web planner -->
+    <a class="launch-card" href="#" onclick="document.getElementById('launcher-overlay').style.display='none';return false;">
+      <span class="lc-icon">&#x1F4BB;</span>
+      <h2>Interactive Web Planner</h2>
+      <p>Full retirement model with live calculations — adjust any input and all tabs update instantly. Works offline, no install required.</p>
+      <span class="lc-badge lc-badge-web">Open Web Planner &rsaquo;</span>
+    </a>
+
+    <!-- Excel download -->
+    <a class="launch-card" href="retirement_planner.xlsx" download>
+      <span class="lc-icon">&#x1F4CA;</span>
+      <h2>Excel Spreadsheet</h2>
+      <p>Download the full model as an Excel workbook — 6 sheets covering Inputs, Roth Conversions, Withdrawals, Portfolio, SS Comparison, and Advice.</p>
+      <span class="lc-badge lc-badge-xl">&#x2B07; Download Excel</span>
+    </a>
+
+  </div>
+
+  <p class="launch-footer">
+    Web Planner &rarr; open directly in any browser &nbsp;|&nbsp;
+    Excel &rarr; requires Microsoft Excel or Google Sheets
+  </p>
+</div>
 
 <header>
   <h1>&#x1F3E6; Retirement Planning Model</h1>
