@@ -2691,7 +2691,38 @@ function runAll() {
   renderGrowthStress(result.INP);
 }
 
-calcAgeFromDOB();  // compute ages from DOBs then run all tabs
+// ── Load defaults from inputs.json (if present) ──────────────
+function applyInputs(data) {
+  // Flatten all sections into one object
+  const flat = Object.values(data).reduce((acc, section) => {
+    if (typeof section === 'object' && !Array.isArray(section)) {
+      Object.assign(acc, section);
+    }
+    return acc;
+  }, {});
+
+  Object.entries(flat).forEach(([id, val]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (el.type === 'checkbox') {
+      el.checked = !!val;
+    } else if (el.tagName === 'SELECT') {
+      el.value = String(val);
+    } else {
+      el.value = val;
+    }
+  });
+}
+
+fetch('inputs.json')
+  .then(r => r.ok ? r.json() : null)
+  .then(data => {
+    if (data) applyInputs(data);
+  })
+  .catch(() => {})   // silently ignore if file missing (e.g. opened locally without a server)
+  .finally(() => {
+    calcAgeFromDOB();  // compute ages from DOBs then run all tabs
+  });
 </script>
 </body>
 </html>
