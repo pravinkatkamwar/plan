@@ -468,6 +468,7 @@ tbody td.tax-cell  { color: var(--red); }
   text-align: center;
 }
 </style>
+<script src="inputs.js"></script>
 </head>
 <body>
 
@@ -2691,17 +2692,9 @@ function runAll() {
   renderGrowthStress(result.INP);
 }
 
-// ── Load defaults from inputs.json (if present) ──────────────
-function applyInputs(data) {
-  // Flatten all sections into one object
-  const flat = Object.values(data).reduce((acc, section) => {
-    if (typeof section === 'object' && !Array.isArray(section)) {
-      Object.assign(acc, section);
-    }
-    return acc;
-  }, {});
-
-  Object.entries(flat).forEach(([id, val]) => {
+// ── Apply defaults from inputs.js (works locally + on GitHub) ─
+if (window.RETIREMENT_INPUTS) {
+  Object.entries(window.RETIREMENT_INPUTS).forEach(([id, val]) => {
     const el = document.getElementById(id);
     if (!el) return;
     if (el.type === 'checkbox') {
@@ -2713,16 +2706,7 @@ function applyInputs(data) {
     }
   });
 }
-
-fetch('inputs.json')
-  .then(r => r.ok ? r.json() : null)
-  .then(data => {
-    if (data) applyInputs(data);
-  })
-  .catch(() => {})   // silently ignore if file missing (e.g. opened locally without a server)
-  .finally(() => {
-    calcAgeFromDOB();  // compute ages from DOBs then run all tabs
-  });
+calcAgeFromDOB();  // compute ages from DOBs then run all tabs
 </script>
 </body>
 </html>
