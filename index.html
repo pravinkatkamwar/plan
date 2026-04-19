@@ -468,14 +468,15 @@ tbody td.tax-cell  { color: var(--red); }
   text-align: center;
 }
 </style>
-<script src="inputs.js"></script>
+<script src="guest.js"></script>
+<script src="private.enc.js" onerror="window.PRIVATE_ENC=null"></script>
 </head>
 <body>
 
 <!-- ── Launch chooser ── -->
 <div id="launcher-overlay">
   <h1>&#x1F3E6; Retirement Planning Model</h1>
-  <p class="launch-sub">Pravin &nbsp;&middot;&nbsp; NJ &nbsp;&middot;&nbsp; Planning to Age 85</p>
+  <p class="launch-sub">Retirement Planning Model &nbsp;&middot;&nbsp; Interactive &amp; Excel</p>
 
   <div class="launch-cards">
 
@@ -503,16 +504,35 @@ tbody td.tax-cell  { color: var(--red); }
   </p>
 </div>
 
+<!-- ── Owner login modal ── -->
+<div id="login-modal" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.7);align-items:center;justify-content:center">
+  <div style="background:#0f2240;border:2px solid #c9a84c;border-radius:12px;padding:32px 28px;width:100%;max-width:380px;margin:16px;box-shadow:0 20px 60px rgba(0,0,0,0.5)">
+    <h2 style="font-family:Georgia,serif;color:#e8c96a;font-size:18px;margin-bottom:6px">&#x1F512; Owner Login</h2>
+    <p style="font-size:11px;color:#7a9ab8;margin-bottom:22px;font-family:'Courier New',monospace">Enter your password to load your real numbers</p>
+    <input type="password" id="login-pw" placeholder="Password…"
+      style="width:100%;padding:11px 14px;border:1px solid #3a5070;border-radius:6px;background:#1e2d45;color:#e8c96a;font-size:14px;font-family:'Courier New',monospace;margin-bottom:10px"
+      onkeydown="if(event.key==='Enter')doLogin()">
+    <div id="login-err" style="font-size:11px;color:#e07070;min-height:18px;margin-bottom:10px;font-family:'Courier New',monospace"></div>
+    <div style="display:flex;gap:10px">
+      <button onclick="doLogin()" style="flex:1;padding:11px;background:#c9a84c;color:#0f2240;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Courier New',monospace">Unlock</button>
+      <button onclick="hideLoginModal()" style="padding:11px 18px;background:transparent;color:#7a9ab8;border:1px solid #3a5070;border-radius:6px;font-size:13px;cursor:pointer;font-family:'Courier New',monospace">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <header>
   <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
     <div>
       <h1>&#x1F3E6; Retirement Planning Model</h1>
       <p id="header-subtitle">NJ &middot; Planning to Age 85</p>
     </div>
-    <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
+    <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;flex-wrap:wrap">
       <span id="save-status" style="font-size:10px;color:#7a9ab8;font-family:var(--font-mono);min-width:80px;text-align:right"></span>
-      <button onclick="saveInputs()" style="background:#c9a84c;color:#0f2240;border:none;padding:7px 14px;border-radius:5px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font-mono);letter-spacing:0.3px" title="Save current inputs to browser storage">&#x1F4BE; Save</button>
-      <button onclick="exportInputsJS()" style="background:transparent;color:#e8c96a;border:1px solid #c9a84c;padding:7px 14px;border-radius:5px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font-mono);letter-spacing:0.3px" title="Download updated inputs.js file for GitHub">&#x2B07; Export</button>
+      <span id="mode-badge" style="font-size:10px;font-family:var(--font-mono);font-weight:700;padding:4px 10px;border-radius:20px;background:#1e3a5a;color:#7a9ab8;letter-spacing:0.5px">GUEST</span>
+      <button id="btn-save" onclick="saveInputs()" style="background:#c9a84c;color:#0f2240;border:none;padding:7px 14px;border-radius:5px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font-mono);letter-spacing:0.3px;display:none" title="Save inputs to browser storage">&#x1F4BE; Save</button>
+      <button id="btn-export" onclick="exportInputsJS()" style="background:transparent;color:#e8c96a;border:1px solid #c9a84c;padding:7px 14px;border-radius:5px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font-mono);letter-spacing:0.3px;display:none" title="Download updated inputs.js">&#x2B07; Export</button>
+      <button id="btn-login" onclick="showLoginModal()" style="background:transparent;color:#e8c96a;border:1px solid #3a5070;padding:7px 14px;border-radius:5px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font-mono);letter-spacing:0.3px" title="Owner login">&#x1F512; Login</button>
+      <button id="btn-logout" onclick="doLogout()" style="background:transparent;color:#e07070;border:1px solid #6a3030;padding:7px 14px;border-radius:5px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font-mono);letter-spacing:0.3px;display:none" title="Return to guest mode">&#x1F513; Logout</button>
     </div>
   </div>
 </header>
@@ -2769,16 +2789,102 @@ function applyInputs(data) {
   });
 }
 
-// ── Load order: 1) inputs.js defaults  2) localStorage overrides
-if (window.RETIREMENT_INPUTS) applyInputs(window.RETIREMENT_INPUTS);
-const _saved = localStorage.getItem('retirement_inputs');
-if (_saved) {
-  try {
-    applyInputs(JSON.parse(_saved));
-    document.getElementById('save-status').textContent = '✓ Loaded saved';
-    setTimeout(() => document.getElementById('save-status').textContent = '', 3000);
-  } catch(e) {}
+// ── Update header name + subtitle ────────────────────────────
+function updateHeader(name, isOwner) {
+  const h1 = document.querySelector('header h1');
+  if (h1) h1.innerHTML = '&#x1F3E6; Retirement Planning Model';
+  const sub = document.getElementById('header-subtitle');
+  if (sub) {
+    const state = document.getElementById('i_state');
+    const stateVal = state ? state.value : 'NJ';
+    sub.textContent = (name || 'Guest') + ' \u00B7 ' + stateVal + ' \u00B7 Planning to Age 85';
+  }
+  // Mode badge
+  const badge = document.getElementById('mode-badge');
+  if (badge) {
+    badge.textContent = isOwner ? 'OWNER' : 'GUEST';
+    badge.style.background = isOwner ? '#1a3a2a' : '#1e3a5a';
+    badge.style.color       = isOwner ? '#6dd68a' : '#7a9ab8';
+  }
+  // Show/hide buttons
+  const show = v => s => { const el = document.getElementById(s); if(el) el.style.display = v; };
+  ['btn-save','btn-export'].forEach(show(isOwner ? 'inline-block' : 'none'));
+  ['btn-login'].forEach(show(isOwner ? 'none' : 'inline-block'));
+  ['btn-logout'].forEach(show(isOwner ? 'inline-block' : 'none'));
 }
+
+// ── AES-256-GCM decryption ────────────────────────────────────
+async function decryptData(encBase64, password) {
+  const buf  = Uint8Array.from(atob(encBase64), c => c.charCodeAt(0));
+  const salt = buf.slice(0, 16);
+  const iv   = buf.slice(16, 28);
+  const data = buf.slice(28);
+  const km   = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']
+  );
+  const key = await crypto.subtle.deriveKey(
+    { name:'PBKDF2', salt, iterations:310000, hash:'SHA-256' },
+    km, { name:'AES-GCM', length:256 }, false, ['decrypt']
+  );
+  const plain = await crypto.subtle.decrypt({ name:'AES-GCM', iv }, key, data);
+  return JSON.parse(new TextDecoder().decode(plain));
+}
+
+// ── Login modal ───────────────────────────────────────────────
+function showLoginModal() {
+  const m = document.getElementById('login-modal');
+  m.style.display = 'flex';
+  document.getElementById('login-pw').value = '';
+  document.getElementById('login-err').textContent = '';
+  setTimeout(() => document.getElementById('login-pw').focus(), 50);
+}
+function hideLoginModal() {
+  document.getElementById('login-modal').style.display = 'none';
+}
+
+async function doLogin() {
+  const pw  = document.getElementById('login-pw').value;
+  const err = document.getElementById('login-err');
+  if (!pw) { err.textContent = 'Please enter your password.'; return; }
+
+  if (!window.PRIVATE_ENC) {
+    err.textContent = 'No encrypted file found. Run encrypt.html first.';
+    return;
+  }
+
+  err.textContent = '⏳ Decrypting…';
+  try {
+    const inputs = await decryptData(window.PRIVATE_ENC, pw);
+    applyInputs(inputs);
+    calcAgeFromDOB();
+    updateHeader(inputs.i_name || 'Owner', true);
+    hideLoginModal();
+    const s = document.getElementById('save-status');
+    s.textContent = '✓ Owner mode';
+    setTimeout(() => s.textContent = '', 3000);
+  } catch(e) {
+    err.textContent = '❌ Wrong password or corrupted file.';
+  }
+}
+
+// ── Logout ────────────────────────────────────────────────────
+function doLogout() {
+  applyInputs(window.GUEST_INPUTS);
+  calcAgeFromDOB();
+  updateHeader('Guest', false);
+  const s = document.getElementById('save-status');
+  s.textContent = 'Returned to guest mode';
+  setTimeout(() => s.textContent = '', 3000);
+}
+
+// ── Close modal on backdrop click ────────────────────────────
+document.getElementById('login-modal').addEventListener('click', function(e) {
+  if (e.target === this) hideLoginModal();
+});
+
+// ── Startup: load guest defaults ─────────────────────────────
+if (window.GUEST_INPUTS) applyInputs(window.GUEST_INPUTS);
+updateHeader('Guest', false);
 calcAgeFromDOB();  // compute ages from DOBs then run all tabs
 </script>
 </body>
