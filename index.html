@@ -642,8 +642,8 @@ tbody td.tax-cell  { color: var(--red); }
   <div class="note" style="margin-bottom:8px">If Wife Salary is $0, she is treated as a <strong>non-working wife</strong> — wife SS benefit (50% of your FRA benefit) applies and no 401k contributions are added. If salary &gt; $0, her income and contributions are included in portfolio growth and joint MAGI (affects IRMAA).</div>
   </div><!-- end collapsible-body: Wife Details -->
 
-  <div class="section-title collapsible" onclick="toggleSection(this)">Growth &amp; Social Security</div>
-  <div class="collapsible-body">
+  <div class="section-title collapsible collapsed" onclick="toggleSection(this)">Growth &amp; Social Security</div>
+  <div class="collapsible-body collapsed">
   <div class="input-grid">
     <div class="input-row"><label>Investment Growth Rate (%)</label><input type="number" id="i_growth" value="8" step="0.1"></div>
     <div class="input-row"><label>Inflation Rate (%)</label><input type="number" id="i_infl" value="3" step="0.1"></div>
@@ -657,8 +657,8 @@ tbody td.tax-cell  { color: var(--red); }
   <div class="note" style="margin-bottom:8px">Wife SS is calculated as 50% of your FRA benefit (age-67 amount), reduced for each month claimed before her FRA (age 67). A non-working wife cannot earn more than this spousal benefit. &middot; <strong>SS COLA</strong>: SS benefit grows each year by the COLA rate starting from the first year benefits are received. SSA historical average is ~2.5%.</div>
   </div><!-- end collapsible-body: Growth & SS -->
 
-  <div class="section-title collapsible" onclick="toggleSection(this)">Expenses</div>
-  <div class="collapsible-body">
+  <div class="section-title collapsible collapsed" onclick="toggleSection(this)">Expenses</div>
+  <div class="collapsible-body collapsed">
   <div class="input-grid">
     <div class="input-row"><label>Monthly Living Expenses ($)</label><input type="number" id="i_living" value="7000"></div>
     <div class="input-row"><label>Mortgage Monthly ($)</label><input type="number" id="i_mortgage" value="2250"></div>
@@ -675,8 +675,8 @@ tbody td.tax-cell  { color: var(--red); }
   <div class="note" style="margin-bottom:8px">Annual gift reduces portfolio each year from Gift Start Age. 2024 annual exclusion is $18,000/person ($36k/yr to one child). Gift does not affect taxable income.</div>
   </div><!-- end collapsible-body: Expenses -->
 
-  <div class="section-title collapsible" onclick="toggleSection(this)">Tax &amp; Conversion Strategy</div>
-  <div class="collapsible-body">
+  <div class="section-title collapsible collapsed" onclick="toggleSection(this)">Tax &amp; Conversion Strategy</div>
+  <div class="collapsible-body collapsed">
   <div class="input-grid">
     <div class="input-row">
       <label>Target Federal Bracket</label>
