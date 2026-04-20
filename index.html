@@ -555,6 +555,7 @@ tbody td.tax-cell  { color: var(--red); }
   <div class="section-title collapsible" onclick="toggleSection(this)">Your Details</div>
   <div class="collapsible-body">
   <div class="input-grid">
+    <div class="input-row"><label>Your Name</label><input type="text" id="i_name" value="Guest" placeholder="e.g. John Smith" onchange="updateHeader(this.value.trim()||'Guest', document.getElementById('mode-badge').textContent==='OWNER')"></div>
     <div class="input-row"><label>Your Date of Birth</label><input type="date" id="i_dob" value="1963-03-17" onchange="calcAgeFromDOB()" style="background:#1e2d45;color:#e8c96a;border:1px solid #3a5070;padding:6px;border-radius:4px;font-size:13px"></div>
     <div class="input-row"><label>Your Age <span style="color:#7a8fa0;font-size:10px">(auto)</span></label><input type="number" id="i_age" value="63" style="background:#2a3f5a;color:#a0b4c8" readonly></div>
     <div class="input-row"><label>Retirement Age</label><input type="number" id="i_ret" value="65"></div>
@@ -729,14 +730,24 @@ tbody td.tax-cell  { color: var(--red); }
   <button class="calc-btn" onclick="runAll()">CALCULATE ALL TABS</button>
 
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-    <button onclick="saveScenario()" style="flex:1;min-width:120px;padding:9px 12px;background:#1e2d45;color:#a0b4c8;border:1px solid #3a5070;border-radius:5px;font-size:12px;font-weight:600;cursor:pointer">💾 Save Scenario</button>
-    <button onclick="restoreScenario()" style="flex:1;min-width:120px;padding:9px 12px;background:#1e2d45;color:#a0b4c8;border:1px solid #3a5070;border-radius:5px;font-size:12px;font-weight:600;cursor:pointer">📂 Restore Scenario</button>
+    <button onclick="saveScenario()" style="flex:1;min-width:120px;padding:9px 12px;background:#1e2d45;color:#a0b4c8;border:1px solid #3a5070;border-radius:5px;font-size:12px;font-weight:600;cursor:pointer">📋 Save Scenario</button>
+    <button onclick="restoreScenario()" style="flex:1;min-width:120px;padding:9px 12px;background:#1e2d45;color:#a0b4c8;border:1px solid #3a5070;border-radius:5px;font-size:12px;font-weight:600;cursor:pointer">📋 Restore Scenario</button>
     <button onclick="printSummary()" style="flex:1;min-width:120px;padding:9px 12px;background:#1e2d45;color:#a0b4c8;border:1px solid #3a5070;border-radius:5px;font-size:12px;font-weight:600;cursor:pointer">🖨️ Print Summary</button>
   </div>
-  <div id="save-status" style="font-size:11px;color:#6fcf97;margin-top:6px;min-height:16px"></div>
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+    <button onclick="saveToFile()" style="flex:1;min-width:120px;padding:9px 12px;background:#1a3a2a;color:#6dd68a;border:1px solid #2d6a4f;border-radius:5px;font-size:12px;font-weight:600;cursor:pointer" title="Download all inputs as a .json file">⬇ Save to File</button>
+    <button onclick="document.getElementById('file-load-input').click()" style="flex:1;min-width:120px;padding:9px 12px;background:#1a3a2a;color:#6dd68a;border:1px solid #2d6a4f;border-radius:5px;font-size:12px;font-weight:600;cursor:pointer" title="Load inputs from a previously saved .json file">⬆ Load from File</button>
+    <input type="file" id="file-load-input" accept=".json" style="display:none" onchange="loadFromFile(event)">
+  </div>
+
+  <div id="inputs-status" style="font-size:11px;color:#6fcf97;margin-top:6px;min-height:16px"></div>
 
   <div class="note">
-    <strong>How to use:</strong> Edit any value above then tap <em>Calculate All Tabs</em>. All five tabs update instantly. Property tax, home insurance, living expenses, and wife insurance all grow at the inflation rate each year. &middot; <strong>Save Scenario</strong> copies all inputs to clipboard as JSON. <strong>Restore Scenario</strong> pastes them back.
+    <strong>How to use:</strong> Edit any value above then tap <em>Calculate All Tabs</em>. &middot;
+    <strong>Save to File</strong> downloads your inputs as a <code>.json</code> file you can reload anytime, on any device. &middot;
+    <strong>Load from File</strong> restores a previously saved file. &middot;
+    <strong>Save/Restore Scenario</strong> uses clipboard for quick copy-paste.
   </div>
 </div>
 
@@ -2745,7 +2756,7 @@ function saveInputs() {
 function exportInputsJS() {
   const data = collectInputs();
   const sections = {
-    'your_details':       ['i_dob','i_ret','i_life','i_state','i_salary','i_trad401k','i_roth401k','i_contrib','i_match','i_roth_ira','i_hsa','i_hsa_c','i_brok'],
+    'your_details':       ['i_name','i_dob','i_ret','i_life','i_state','i_salary','i_trad401k','i_roth401k','i_contrib','i_match','i_roth_ira','i_hsa','i_hsa_c','i_brok'],
     'wife_details':       ['i_sp_dob','i_sp_ret','i_sp_salary','i_sp_401k','i_sp_contrib','i_sp_match_rate','i_trad_sp','i_roth_sp'],
     'growth_and_ss':      ['i_growth','i_infl','i_ss_cola','i_ss65','i_ss67','i_ss70','i_ss_age','i_sp_ss_age'],
     'expenses':           ['i_living','i_mortgage','i_payoff_mortgage','i_prop_tax','i_home_ins','i_medicare','i_med_infl','i_sp_ins','i_home_val','i_annual_gift','i_gift_age'],
@@ -2776,6 +2787,50 @@ function exportInputsJS() {
   const s = document.getElementById('save-status');
   s.textContent = '↓ Exported';
   setTimeout(() => s.textContent = '', 2500);
+}
+
+// ── Save all inputs to a local .json file ────────────────────
+function saveToFile() {
+  const data = collectInputs();
+  const today = new Date().toISOString().slice(0, 10);
+  // Use first name from i_name field for filename; fall back to "retirement-calculator"
+  const rawName = (data.i_name || '').trim();
+  const firstName = rawName.split(/\s+/)[0] || 'retirement-calculator';
+  const safeName = firstName.toLowerCase().replace(/[^a-z0-9]/g, '-');
+  const payload = { _saved: today, _version: 1, ...data };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = safeName + '-plan-' + today + '.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  const s = document.getElementById('inputs-status');
+  if (s) { s.textContent = '✓ Saved to file'; setTimeout(() => s.textContent = '', 2500); }
+}
+
+// ── Load inputs from a previously saved .json file ───────────
+function loadFromFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      // strip metadata keys before applying
+      const { _saved, _version, ...inputs } = data;
+      applyInputs(inputs);
+      calcAgeFromDOB();
+      const s = document.getElementById('inputs-status');
+      const savedDate = _saved ? ' (saved ' + _saved + ')' : '';
+      if (s) { s.textContent = '✓ Loaded' + savedDate; setTimeout(() => s.textContent = '', 3500); }
+    } catch(err) {
+      const s = document.getElementById('inputs-status');
+      if (s) s.textContent = '❌ Invalid file — please select a .json saved by this planner.';
+    }
+    // reset file input so same file can be re-loaded if needed
+    event.target.value = '';
+  };
+  reader.readAsText(file);
 }
 
 // ── Apply a flat {id: value} object to all input fields ───────
@@ -2884,7 +2939,7 @@ document.getElementById('login-modal').addEventListener('click', function(e) {
 
 // ── Startup: load guest defaults ─────────────────────────────
 if (window.GUEST_INPUTS) applyInputs(window.GUEST_INPUTS);
-updateHeader('Guest', false);
+updateHeader((window.GUEST_INPUTS && window.GUEST_INPUTS.i_name) || 'Guest', false);
 calcAgeFromDOB();  // compute ages from DOBs then run all tabs
 </script>
 </body>
