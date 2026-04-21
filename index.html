@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Retirement Planning Model</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 :root {
   --navy: #0f2240;
@@ -467,6 +468,64 @@ tbody td.tax-cell  { color: var(--red); }
   font-family: var(--font-mono);
   text-align: center;
 }
+
+/* ── Chart grid responsive ───────────────────────────────────── */
+@media (max-width: 700px) {
+  .chart-grid { grid-template-columns: 1fr !important; }
+}
+
+/* ── Chart containers ─────────────────────────────────────────── */
+.chart-section {
+  margin-top: 24px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 18px 20px 14px;
+}
+.chart-section h3 {
+  font-family: var(--font-serif);
+  font-size: 14px;
+  color: var(--navy);
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+}
+.chart-wrap {
+  position: relative;
+  width: 100%;
+}
+
+/* ── Print / PDF styles ───────────────────────────────────────── */
+@media print {
+  /* ── Force ALL colours / backgrounds to print as-is ── */
+  *, *::before, *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  /* show every tab panel, each starting on a new page */
+  .panel                 { display: block !important; page-break-before: always; }
+  .panel:first-of-type   { page-break-before: avoid; }
+
+  /* hide UI chrome */
+  .tab-nav, #launcher-overlay, #login-modal,
+  .calc-btn, #btn-export, #btn-login, #btn-logout,
+  #mode-badge, #save-status,
+  #btn-save-file, #btn-load-file, #btn-print-summary, #btn-print-pdf,
+  button[onclick*="saveScenario"], button[onclick*="restoreScenario"],
+  input[type="file"],
+  .section-title.collapsible::after  { display: none !important; }
+
+  /* expand all collapsed sections */
+  .collapsible-body.collapsed { display: block !important; max-height: none !important; }
+
+  /* chart canvas: give each a fixed height so they don't collapse */
+  canvas { max-height: 340px !important; }
+
+  /* don't break inside a card row or chart section */
+  .cards, .chart-section, .chart-grid, .tbl-wrap { page-break-inside: avoid; }
+}
 </style>
 <script src="guest.js"></script>
 <script src="private.enc.js" onerror="window.PRIVATE_ENC=null"></script>
@@ -521,18 +580,30 @@ tbody td.tax-cell  { color: var(--red); }
 </div>
 
 <header>
-  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px">
+    <!-- Title -->
     <div>
       <h1>&#x1F3E6; Retirement Planning Model</h1>
       <p id="header-subtitle">NJ &middot; Planning to Age 85</p>
     </div>
-    <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;flex-wrap:wrap">
-      <span id="save-status" style="font-size:10px;color:#7a9ab8;font-family:var(--font-mono);min-width:80px;text-align:right"></span>
-      <span id="mode-badge" style="font-size:10px;font-family:var(--font-mono);font-weight:700;padding:4px 10px;border-radius:20px;background:#1e3a5a;color:#7a9ab8;letter-spacing:0.5px">GUEST</span>
-      <button id="btn-save" onclick="saveInputs()" style="background:#c9a84c;color:#0f2240;border:none;padding:7px 14px;border-radius:5px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font-mono);letter-spacing:0.3px;display:none" title="Save inputs to browser storage">&#x1F4BE; Save</button>
-      <button id="btn-export" onclick="exportInputsJS()" style="background:transparent;color:#e8c96a;border:1px solid #c9a84c;padding:7px 14px;border-radius:5px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font-mono);letter-spacing:0.3px;display:none" title="Download updated inputs.js">&#x2B07; Export</button>
-      <button id="btn-login" onclick="showLoginModal()" style="background:transparent;color:#e8c96a;border:1px solid #3a5070;padding:7px 14px;border-radius:5px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font-mono);letter-spacing:0.3px" title="Owner login">&#x1F512; Login</button>
-      <button id="btn-logout" onclick="doLogout()" style="background:transparent;color:#e07070;border:1px solid #6a3030;padding:7px 14px;border-radius:5px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font-mono);letter-spacing:0.3px;display:none" title="Return to guest mode">&#x1F513; Logout</button>
+    <!-- Controls (stacked: mode row + action row) -->
+    <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+      <!-- Mode / owner row -->
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <span id="save-status" style="font-size:10px;color:#6fcf97;font-family:var(--font-mono);min-width:80px;text-align:right"></span>
+        <span id="mode-badge" style="font-size:10px;font-family:var(--font-mono);font-weight:700;padding:4px 10px;border-radius:20px;background:#1e3a5a;color:#7a9ab8;letter-spacing:0.5px">GUEST</span>
+        <button id="btn-export" onclick="exportInputsJS()" style="background:transparent;color:#e8c96a;border:1px solid #c9a84c;padding:7px 12px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font-mono);letter-spacing:0.3px;display:none" title="Download inputs.js to update site defaults on GitHub">&#x2B07; Update inputs.js</button>
+        <button id="btn-login" onclick="showLoginModal()" style="background:transparent;color:#e8c96a;border:1px solid #3a5070;padding:7px 12px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font-mono);letter-spacing:0.3px" title="Owner login">&#x1F512; Login</button>
+        <button id="btn-logout" onclick="doLogout()" style="background:transparent;color:#e07070;border:1px solid #6a3030;padding:7px 12px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font-mono);letter-spacing:0.3px;display:none" title="Return to guest mode">&#x1F513; Logout</button>
+      </div>
+      <!-- Action row — always visible -->
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <button id="btn-save-file" onclick="saveToFile()" style="padding:6px 12px;background:#1a3a2a;color:#6dd68a;border:1px solid #2d6a4f;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font-mono)" title="Download inputs as a .json file to reload later">⬇ Save to File</button>
+        <button id="btn-load-file" onclick="document.getElementById('file-load-input').click()" style="padding:6px 12px;background:#1a3a2a;color:#6dd68a;border:1px solid #2d6a4f;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font-mono)" title="Load inputs from a previously saved .json file">⬆ Load from File</button>
+        <input type="file" id="file-load-input" accept=".json" style="display:none" onchange="loadFromFile(event)">
+        <button id="btn-print-summary" onclick="printSummary()" style="padding:6px 12px;background:#1e2d45;color:#a0b4c8;border:1px solid #3a5070;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font-mono)" title="One-page visual summary">&#x1F5A8; Summary</button>
+        <button id="btn-print-pdf" onclick="printAllTabs()" style="padding:6px 12px;background:#1e2d45;color:#a0b4c8;border:1px solid #3a5070;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font-mono)" title="Full report — all tabs and charts">&#x1F5A8; Print PDF</button>
+      </div>
     </div>
   </div>
 </header>
@@ -548,6 +619,7 @@ tbody td.tax-cell  { color: var(--red); }
   <button class="tab-btn" onclick="showTab('montecarlo',this)">Risk</button>
   <button class="tab-btn" onclick="showTab('survivor',this)">Survivor</button>
   <button class="tab-btn" onclick="showTab('advice',this)">Advice</button>
+  <button class="tab-btn" onclick="showTab('charts',this)">📊 Charts</button>
 </div>
 
 <!-- INPUTS -->
@@ -732,23 +804,14 @@ tbody td.tax-cell  { color: var(--red); }
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
     <button onclick="saveScenario()" style="flex:1;min-width:120px;padding:9px 12px;background:#1e2d45;color:#a0b4c8;border:1px solid #3a5070;border-radius:5px;font-size:12px;font-weight:600;cursor:pointer">📋 Save Scenario</button>
     <button onclick="restoreScenario()" style="flex:1;min-width:120px;padding:9px 12px;background:#1e2d45;color:#a0b4c8;border:1px solid #3a5070;border-radius:5px;font-size:12px;font-weight:600;cursor:pointer">📋 Restore Scenario</button>
-    <button onclick="printSummary()" style="flex:1;min-width:120px;padding:9px 12px;background:#1e2d45;color:#a0b4c8;border:1px solid #3a5070;border-radius:5px;font-size:12px;font-weight:600;cursor:pointer">🖨️ Print Summary</button>
   </div>
 
-  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
-    <button onclick="saveToFile()" style="flex:1;min-width:120px;padding:9px 12px;background:#1a3a2a;color:#6dd68a;border:1px solid #2d6a4f;border-radius:5px;font-size:12px;font-weight:600;cursor:pointer" title="Download all inputs as a .json file">⬇ Save to File</button>
-    <button onclick="document.getElementById('file-load-input').click()" style="flex:1;min-width:120px;padding:9px 12px;background:#1a3a2a;color:#6dd68a;border:1px solid #2d6a4f;border-radius:5px;font-size:12px;font-weight:600;cursor:pointer" title="Load inputs from a previously saved .json file">⬆ Load from File</button>
-    <input type="file" id="file-load-input" accept=".json" style="display:none" onchange="loadFromFile(event)">
-  </div>
-
-  <div id="inputs-status" style="font-size:11px;color:#6fcf97;margin-top:6px;min-height:16px"></div>
-
-  <div class="note">
+  <div class="note" style="margin-top:10px">
     <strong>How to use:</strong> Edit any value above then tap <em>Calculate All Tabs</em>. &middot;
-    <strong>Save to File</strong> downloads your inputs as a <code>.json</code> file you can reload anytime, on any device. &middot;
-    <strong>Load from File</strong> restores a previously saved file. &middot;
-    <strong>Save/Restore Scenario</strong> uses clipboard for quick copy-paste.
+    Use <strong>⬇ Save to File</strong> and <strong>⬆ Load from File</strong> in the header to save and restore your inputs on any device. &middot;
+    <strong>Save/Restore Scenario</strong> uses clipboard for quick copy-paste comparisons.
   </div>
+
 </div>
 
 <!-- ROTH -->
@@ -768,6 +831,7 @@ tbody td.tax-cell  { color: var(--red); }
       <tbody id="roth-body"></tbody>
     </table>
   </div>
+
 </div>
 
 <!-- WITHDRAWALS -->
@@ -979,6 +1043,33 @@ tbody td.tax-cell  { color: var(--red); }
   </div>
   <div class="note" style="margin-top:12px">
     <strong>Disclaimer:</strong> This model is for planning purposes only and does not constitute tax, legal, or financial advice. Consult a CPA or CFP regarding RMD calculations, IRMAA brackets, and state residency rules.
+  </div>
+</div>
+
+<!-- CHARTS -->
+<div id="tab-charts" class="panel">
+  <div class="section-title">Visual Summary</div>
+  <div class="note" style="margin-bottom:16px">Charts update automatically when you calculate. Click <strong>🖨 Print PDF</strong> to export this tab along with all others.</div>
+
+  <!-- Portfolio Balance -->
+  <div class="chart-section">
+    <h3>Portfolio Balance Over Time ($k)</h3>
+    <div class="chart-wrap" style="height:320px"><canvas id="chart-portfolio"></canvas></div>
+  </div>
+
+  <!-- 2-column row: Roth Conversion + Expense Breakdown -->
+  <div class="chart-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+    <div class="chart-section" style="margin-top:0">
+      <h3>Roth Conversion &amp; Tax Cost ($k)</h3>
+      <div class="chart-wrap" style="height:280px"><canvas id="chart-roth"></canvas></div>
+    </div>
+    <div class="chart-section" style="margin-top:0">
+      <h3>Annual Retirement Expense Breakdown</h3>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+        <div class="chart-wrap" style="width:240px;height:240px"><canvas id="chart-expense"></canvas></div>
+        <div id="chart-expense-legend" style="width:100%;font-size:12px;line-height:1.9"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1208,11 +1299,20 @@ function calc(overrides) {
 
     var spouseAge     = INP.sp_age + (age - INP.age);
     var spouseWorking = INP.sp_salary > 0 && spouseAge < INP.sp_ret;
-    var spContrib     = spouseWorking ? (INP.sp_contrib + INP.sp_salary * INP.sp_match) : 0;
+
+    // Salaries grow with inflation starting from year 1 (i+1 compounding periods).
+    // Expenses use inflF = (1+infl)^i because they are stated in today's dollars and
+    // the first retirement year correctly shows them inflated to retirement-time levels.
+    // Salary is different: the input is today's salary, so next year (i=0) it's already
+    // one year ahead → use (i+1) so age 57 shows salary*(1+infl), age 58 shows *(1+infl)², etc.
+    var salaryInflF  = Math.pow(1 + INP.infl, i + 1);
+    var currSalary   = INP.salary    * salaryInflF;
+    var currSpSalary = INP.sp_salary * salaryInflF;
+    var spContrib    = spouseWorking ? (INP.sp_contrib + currSpSalary * INP.sp_match) : 0;
 
     if (isWorking) {
       // ── WORKING YEAR: grow accounts with contributions, no conversions or withdrawals ──
-      var tradEnd  = (trad + INP.contrib + INP.salary * INP.match) * (1 + INP.growth);
+      var tradEnd  = (trad + INP.contrib + currSalary * INP.match) * (1 + INP.growth);
       var newRoth  = roth  * (1 + INP.growth);
       var newRothSp= rothSp* (1 + INP.growth);
       var newTradSp= (tradSp + spContrib) * (1 + INP.growth);
@@ -1221,12 +1321,12 @@ function calc(overrides) {
       var totalPort= tradEnd + newRoth + newRothSp + newTradSp + newHSA + newBrok;
 
       var yourContrib = INP.contrib;
-      var matchAmt    = INP.salary * INP.match;
+      var matchAmt    = currSalary * INP.match;
       var hsaContrib  = INP.hsa_c;
       rows.push({
         age: age, isRMD: false, isWorking: true,
         tradStart: trad, ss: 0, ss_taxable: 0, conv: 0,
-        totalTaxable: INP.salary + (spouseWorking ? INP.sp_salary : 0),
+        totalTaxable: currSalary + (spouseWorking ? currSpSalary : 0),
         ft: 0, tradEnd: tradEnd, effRate: 0,
         living: 0, housing: 0, propIns: 0, spIns: 0,
         medicareYr: 0, spMedicareYr: 0, totalNeeds: 0,
@@ -1241,7 +1341,7 @@ function calc(overrides) {
         portGrowthAmt: totalPort - (trad + roth + rothSp + tradSp + hsa + brok) - yourContrib - matchAmt - hsaContrib - spContrib
       });
 
-      magiQ.push(INP.salary + (spouseWorking ? INP.sp_salary : 0)); magiQ.shift();
+      magiQ.push(currSalary + (spouseWorking ? currSpSalary : 0)); magiQ.shift();
       trad = tradEnd; roth = newRoth; rothSp = newRothSp; tradSp = newTradSp;
       hsa = newHSA; brok = newBrok;
 
@@ -1397,7 +1497,7 @@ function calc(overrides) {
       });
 
       // IRMAA MAGI = taxable portion of SS + conv + tradDraw (NOT gross SS)
-      var irmaa_magi = ss_taxable + conv + tradDraw + (spouseWorking ? INP.sp_salary : 0);
+      var irmaa_magi = ss_taxable + conv + tradDraw + (spouseWorking ? currSpSalary : 0);
       magiQ.push(irmaa_magi); magiQ.shift();
       trad = tradEnd; roth = newRoth; rothSp = newRothSp; tradSp = newTradSp;
       hsa = newHSA; brok = newBrok;
@@ -2702,6 +2802,299 @@ function renderInflationStress(INP) {
     '<div style="font-size:11px;color:var(--muted);margin-top:6px">★ = your current inflation setting · Higher inflation increases expenses faster than SS COLA covers, drawing down portfolio sooner.</div>';
 }
 
+// ── Chart instances store ──────────────────────────────────────
+window._charts = {};
+
+function destroyChart(id) {
+  if (window._charts[id]) { window._charts[id].destroy(); delete window._charts[id]; }
+}
+
+function renderCharts(rows, INP) {
+  if (typeof Chart === 'undefined') return; // Chart.js not loaded yet
+
+  // ── 1. EXPENSE BREAKDOWN — donut chart in Inputs tab ─────────
+  (function() {
+    destroyChart('expense');
+    var infl = 1; // show retirement-start values (real dollars)
+    var items = [
+      { label: 'Living Expenses',    val: INP.living * 12,   color: '#2563eb' },
+      { label: 'Mortgage',           val: INP.mortgage * 12, color: '#7c3aed' },
+      { label: 'Property Tax',       val: INP.prop_tax,      color: '#db2777' },
+      { label: 'Home Insurance',     val: INP.home_ins,      color: '#ea580c' },
+      { label: 'Medicare (member)',  val: INP.medicare * 12, color: '#16a34a' },
+      { label: 'Wife Insurance',     val: INP.sp_ins * 12,   color: '#0891b2' }
+    ].filter(function(d){ return d.val > 0; });
+
+    var total = items.reduce(function(s,d){ return s+d.val; }, 0);
+    var ctx = document.getElementById('chart-expense');
+    if (!ctx) return;
+    window._charts['expense'] = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: items.map(function(d){ return d.label; }),
+        datasets: [{ data: items.map(function(d){ return d.val; }),
+          backgroundColor: items.map(function(d){ return d.color; }),
+          borderWidth: 2, borderColor: '#fff', hoverOffset: 6 }]
+      },
+      options: {
+        cutout: '62%', responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function(ctx) {
+                var v = ctx.parsed;
+                var pct = total > 0 ? (v/total*100).toFixed(1) : 0;
+                return ' $' + Math.round(v).toLocaleString() + '  (' + pct + '%)';
+              }
+            }
+          }
+        }
+      }
+    });
+    // Custom legend
+    var leg = document.getElementById('chart-expense-legend');
+    if (leg) {
+      leg.innerHTML = items.map(function(d){
+        var pct = total > 0 ? (d.val/total*100).toFixed(1) : 0;
+        return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">' +
+          '<span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:' + d.color + ';flex-shrink:0"></span>' +
+          '<span style="color:#374151">' + d.label + '</span>' +
+          '<span style="margin-left:auto;font-weight:600;color:#0f2240">$' + Math.round(d.val).toLocaleString() + '</span>' +
+          '<span style="color:#6b7280;min-width:38px;text-align:right">' + pct + '%</span>' +
+          '</div>';
+      }).join('') +
+      '<div style="border-top:1px solid #e5e7eb;margin-top:8px;padding-top:6px;font-weight:700;color:#0f2240">' +
+        'Total: $' + Math.round(total).toLocaleString() + '/yr' +
+      '</div>';
+    }
+  })();
+
+  // ── 2. ROTH CONVERSION — bar + line chart in Roth tab ────────
+  (function() {
+    destroyChart('roth');
+    var retRows = rows.filter(function(r){ return !r.isWorking && !r.isSeed; });
+    var ages    = retRows.map(function(r){ return r.age; });
+    var convs   = retRows.map(function(r){ return Math.round(r.conv / 1000); });    // $k
+    var taxes   = retRows.map(function(r){ return Math.round(r.ft  / 1000); });
+    var barColors = retRows.map(function(r){
+      return r.isRMD ? 'rgba(255,138,76,0.75)' : 'rgba(45,106,79,0.8)';
+    });
+
+    var ctx = document.getElementById('chart-roth');
+    if (!ctx) return;
+    window._charts['roth'] = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ages,
+        datasets: [
+          { label: 'Roth Conversion ($k)',
+            data: convs, backgroundColor: barColors,
+            borderColor: barColors, borderWidth: 1,
+            yAxisID: 'y' },
+          { label: 'Federal Tax ($k)',
+            data: taxes, type: 'line',
+            borderColor: '#b5231a', backgroundColor: 'rgba(181,35,26,0.12)',
+            pointRadius: 3, pointBackgroundColor: '#b5231a',
+            fill: true, tension: 0.3, yAxisID: 'y' }
+        ]
+      },
+      options: {
+        responsive: true,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { position: 'top', labels: { font: { size: 11 }, color: '#374151' } },
+          tooltip: {
+            callbacks: {
+              label: function(ctx) { return ' ' + ctx.dataset.label + ': $' + ctx.parsed.y.toLocaleString() + 'k'; }
+            }
+          }
+        },
+        scales: {
+          x: { ticks: { color: '#374151', font: { size: 11 } }, grid: { color: '#e5e7eb' } },
+          y: { ticks: { color: '#374151', font: { size: 11 },
+                 callback: function(v){ return '$' + v + 'k'; } },
+               grid: { color: '#e5e7eb' }, beginAtZero: true }
+        }
+      }
+    });
+  })();
+
+  // ── 3. PORTFOLIO BALANCE — multi-line in Portfolio tab ───────
+  (function() {
+    destroyChart('portfolio');
+    var ages  = rows.filter(function(r){ return !r.isSeed; }).map(function(r){ return r.age; });
+    var trad  = rows.filter(function(r){ return !r.isSeed; }).map(function(r){ return +(r.tradBal/1000).toFixed(1); });
+    var roth  = rows.filter(function(r){ return !r.isSeed; }).map(function(r){
+      return +((r.rothBal + (r.rothSpBal||0)) / 1000).toFixed(1);
+    });
+    var tradSp= rows.filter(function(r){ return !r.isSeed; }).map(function(r){ return +((r.tradSpBal||0)/1000).toFixed(1); });
+    var hsa   = rows.filter(function(r){ return !r.isSeed; }).map(function(r){ return +(r.hsaBal/1000).toFixed(1); });
+    var brok  = rows.filter(function(r){ return !r.isSeed; }).map(function(r){ return +(r.brokBal/1000).toFixed(1); });
+    var total = rows.filter(function(r){ return !r.isSeed; }).map(function(r){ return +(r.totalPort/1000).toFixed(1); });
+    // Retirement start vertical annotation line age
+    var retAge = INP.ret;
+
+    var ctx = document.getElementById('chart-portfolio');
+    if (!ctx) return;
+    window._charts['portfolio'] = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: ages,
+        datasets: [
+          { label: 'Total Portfolio',  data: total, borderColor: '#0f2240', backgroundColor: 'rgba(15,34,64,0.07)',
+            borderWidth: 2.5, pointRadius: 2, fill: true, tension: 0.3 },
+          { label: 'Trad 401k/IRA',    data: trad,  borderColor: '#b5231a', backgroundColor: 'transparent',
+            borderWidth: 1.5, pointRadius: 2, fill: false, tension: 0.3 },
+          { label: 'Roth (You+Wife)',   data: roth,  borderColor: '#2d6a4f', backgroundColor: 'transparent',
+            borderWidth: 1.5, pointRadius: 2, fill: false, tension: 0.3 },
+          { label: 'Wife Trad',         data: tradSp,borderColor: '#7c3aed', backgroundColor: 'transparent',
+            borderWidth: 1.5, pointRadius: 2, borderDash: [4,4], fill: false, tension: 0.3 },
+          { label: 'HSA',               data: hsa,   borderColor: '#0891b2', backgroundColor: 'transparent',
+            borderWidth: 1.5, pointRadius: 2, borderDash: [4,4], fill: false, tension: 0.3 },
+          { label: 'Brokerage',         data: brok,  borderColor: '#ea580c', backgroundColor: 'transparent',
+            borderWidth: 1.5, pointRadius: 2, borderDash: [4,4], fill: false, tension: 0.3 }
+        ]
+      },
+      options: {
+        responsive: true,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { position: 'top', labels: { font: { size: 11 }, color: '#374151' } },
+          tooltip: {
+            callbacks: {
+              label: function(ctx) { return ' ' + ctx.dataset.label + ': $' + ctx.parsed.y.toLocaleString() + 'k'; }
+            }
+          },
+          // Retirement line annotation drawn via afterDraw plugin
+          retirementLine: { retAge: retAge, ages: ages }
+        },
+        scales: {
+          x: { ticks: { color: '#374151', font: { size: 11 } }, grid: { color: '#e5e7eb' } },
+          y: { ticks: { color: '#374151', font: { size: 11 },
+                 callback: function(v){ return '$' + v + 'k'; } },
+               grid: { color: '#e5e7eb' }, beginAtZero: true }
+        }
+      },
+      plugins: [{
+        id: 'retirementLine',
+        afterDraw: function(chart) {
+          var retAge = chart.options.plugins.retirementLine.retAge;
+          var ages   = chart.options.plugins.retirementLine.ages;
+          var idx = ages.indexOf(retAge);
+          if (idx < 0) return;
+          var ctx2 = chart.ctx;
+          var x = chart.scales.x.getPixelForValue(idx);
+          var top = chart.scales.y.top, bottom = chart.scales.y.bottom;
+          ctx2.save();
+          ctx2.beginPath();
+          ctx2.setLineDash([6, 4]);
+          ctx2.strokeStyle = 'rgba(201,168,76,0.8)';
+          ctx2.lineWidth = 2;
+          ctx2.moveTo(x, top); ctx2.lineTo(x, bottom);
+          ctx2.stroke();
+          ctx2.setLineDash([]);
+          ctx2.fillStyle = 'rgba(201,168,76,0.9)';
+          ctx2.font = 'bold 11px sans-serif';
+          ctx2.fillText('Retire ' + retAge, x + 4, top + 14);
+          ctx2.restore();
+        }
+      }]
+    });
+  })();
+}
+
+// ── Print all tabs as PDF ─────────────────────────────────────
+function printAllTabs() {
+  if (!window._lastRows || !window._lastINP) { alert('Please click Calculate All Tabs first.'); return; }
+  var INP = window._lastINP;
+
+  // 1. Temporarily show the Charts tab so Chart.js canvases have real dimensions,
+  //    then resize every chart instance so they render at full size before capture.
+  var chartsPanel = document.getElementById('tab-charts');
+  var chartsPanelPrev = chartsPanel ? chartsPanel.style.display : '';
+  if (chartsPanel) chartsPanel.style.display = 'block';
+
+  if (window._charts) {
+    Object.keys(window._charts).forEach(function(k) {
+      try { window._charts[k].resize(); } catch(e) {}
+    });
+  }
+
+  // Wait one animation frame for Chart.js to repaint, then capture and build PDF
+  requestAnimationFrame(function() { setTimeout(function() {
+
+  // 2. Capture live chart canvases as PNG data URLs (always print in full color)
+  var chartImgs = {};
+  ['chart-portfolio', 'chart-roth', 'chart-expense'].forEach(function(id) {
+    var c = document.getElementById(id);
+    if (c) try { chartImgs[id] = c.toDataURL('image/png'); } catch(e) {}
+  });
+
+  // Restore Charts tab visibility
+  if (chartsPanel) chartsPanel.style.display = chartsPanelPrev;
+
+  // 3. Gather main page CSS so all class-based colors are included
+  var cssText = '';
+  document.querySelectorAll('style').forEach(function(s) { cssText += s.textContent; });
+
+  // 3. Clone every panel, expanding collapsed sections and swapping canvas → img
+  var panelsHTML = '';
+  document.querySelectorAll('.panel').forEach(function(panel, pi) {
+    var clone = panel.cloneNode(true);
+    clone.style.display = 'block';
+    // Expand any collapsed section bodies
+    clone.querySelectorAll('.collapsible-body').forEach(function(el) {
+      el.style.display = 'block'; el.style.maxHeight = 'none';
+    });
+    // Replace each chart canvas with its PNG image
+    clone.querySelectorAll('canvas').forEach(function(canvas) {
+      var img = document.createElement('img');
+      img.src = chartImgs[canvas.id] || '';
+      img.style.cssText = 'max-width:100%;height:auto;display:block;margin:0 auto';
+      canvas.parentNode.replaceChild(img, canvas);
+    });
+    // Strip interactive elements (buttons, file inputs, login modal)
+    clone.querySelectorAll('button, input[type="file"], #login-modal').forEach(function(el){ el.remove(); });
+    panelsHTML += clone.outerHTML + '\n';
+  });
+
+  // 4. Open a new window — same pattern as printSummary so colours render correctly
+  var w = window.open('', '_blank', 'width=1100,height=860');
+  w.document.write('<!DOCTYPE html><html><head>' +
+    '<meta charset="UTF-8">' +
+    '<title>Retirement Plan — Full Report</title>' +
+    '<style>' + cssText + '</style>' +
+    '<style>' +
+    // Force every element to print its exact colour — applied outside @media print
+    // so the new window shows colours on-screen too, matching "Print summary" behaviour
+    '*,*::before,*::after{' +
+      '-webkit-print-color-adjust:exact!important;' +
+      'print-color-adjust:exact!important;' +
+      'color-adjust:exact!important' +
+    '}' +
+    '.panel{display:block!important;page-break-before:always}' +
+    '.panel:first-child{page-break-before:avoid}' +
+    '.tab-nav,.calc-btn,input[type="file"],' +
+    '#launcher-overlay,#login-modal,#save-status,' +
+    '#btn-export,#btn-login,#btn-logout,#mode-badge,' +
+    '#btn-save-file,#btn-load-file,#btn-print-summary,#btn-print-pdf,' +
+    'button[onclick*="saveScenario"],button[onclick*="restoreScenario"]' +
+    '{display:none!important}' +
+    '@media print{' +
+      'canvas{max-height:340px!important}' +
+      '.cards,.chart-section,.chart-grid,.tbl-wrap{page-break-inside:avoid}' +
+    '}' +
+    '</style>' +
+    '</head><body>' +
+    panelsHTML +
+    '<script>window.onload=function(){setTimeout(function(){window.print();},600)};<\/script>' +
+    '</body></html>');
+  w.document.close();
+
+  }, 150); }); // end requestAnimationFrame + setTimeout
+}
+
 function runAll() {
   // Highlight selected withdrawal option
   var labelA = $('wd-opt-a-label'), labelB = $('wd-opt-b-label');
@@ -2730,6 +3123,7 @@ function runAll() {
   renderMortgageCompare(result.INP);
   renderInflationStress(result.INP);
   renderGrowthStress(result.INP);
+  renderCharts(result.rows, result.INP);
 }
 
 // ── Collect all input values into a plain object ──────────────
@@ -2742,14 +3136,6 @@ function collectInputs() {
     else data[el.id] = el.value;
   });
   return data;
-}
-
-// ── Save to localStorage ───────────────────────────────────────
-function saveInputs() {
-  localStorage.setItem('retirement_inputs', JSON.stringify(collectInputs()));
-  const s = document.getElementById('save-status');
-  s.textContent = '✓ Saved';
-  setTimeout(() => s.textContent = '', 2500);
 }
 
 // ── Export updated inputs.js file ─────────────────────────────
@@ -2804,8 +3190,8 @@ function saveToFile() {
   a.download = safeName + '-plan-' + today + '.json';
   a.click();
   URL.revokeObjectURL(a.href);
-  const s = document.getElementById('inputs-status');
-  if (s) { s.textContent = '✓ Saved to file'; setTimeout(() => s.textContent = '', 2500); }
+  const s = document.getElementById('save-status');
+  if (s) { s.textContent = '✓ Saved'; setTimeout(() => s.textContent = '', 2500); }
 }
 
 // ── Load inputs from a previously saved .json file ───────────
@@ -2820,12 +3206,12 @@ function loadFromFile(event) {
       const { _saved, _version, ...inputs } = data;
       applyInputs(inputs);
       calcAgeFromDOB();
-      const s = document.getElementById('inputs-status');
-      const savedDate = _saved ? ' (saved ' + _saved + ')' : '';
+      const s = document.getElementById('save-status');
+      const savedDate = _saved ? ' (' + _saved + ')' : '';
       if (s) { s.textContent = '✓ Loaded' + savedDate; setTimeout(() => s.textContent = '', 3500); }
     } catch(err) {
-      const s = document.getElementById('inputs-status');
-      if (s) s.textContent = '❌ Invalid file — please select a .json saved by this planner.';
+      const s = document.getElementById('save-status');
+      if (s) s.textContent = '❌ Invalid file';
     }
     // reset file input so same file can be re-loaded if needed
     event.target.value = '';
@@ -2863,7 +3249,7 @@ function updateHeader(name, isOwner) {
   }
   // Show/hide buttons
   const show = v => s => { const el = document.getElementById(s); if(el) el.style.display = v; };
-  ['btn-save','btn-export'].forEach(show(isOwner ? 'inline-block' : 'none'));
+  ['btn-export'].forEach(show(isOwner ? 'inline-block' : 'none'));
   ['btn-login'].forEach(show(isOwner ? 'none' : 'inline-block'));
   ['btn-logout'].forEach(show(isOwner ? 'inline-block' : 'none'));
 }
