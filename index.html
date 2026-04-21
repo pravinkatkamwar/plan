@@ -518,7 +518,7 @@ tbody td.tax-cell  { color: var(--red); }
   .section-title.collapsible::after  { display: none !important; }
 
   /* expand all collapsed sections */
-  .collapsible-body.collapsed { display: block !important; max-height: none !important; }
+  .collapsible-body.collapsed { display: block !important; max-height: none !important; opacity: 1 !important; overflow: visible !important; }
 
   /* chart canvas: give each a fixed height so they don't collapse */
   canvas { max-height: 340px !important; }
@@ -3043,9 +3043,16 @@ function printAllTabs() {
   document.querySelectorAll('.panel').forEach(function(panel, pi) {
     var clone = panel.cloneNode(true);
     clone.style.display = 'block';
-    // Expand any collapsed section bodies
+    // Expand ALL collapsible sections (collapsed uses max-height:0 + opacity:0)
     clone.querySelectorAll('.collapsible-body').forEach(function(el) {
-      el.style.display = 'block'; el.style.maxHeight = 'none';
+      el.classList.remove('collapsed');          // remove class so CSS rule no longer applies
+      el.style.maxHeight  = 'none';
+      el.style.opacity    = '1';
+      el.style.overflow   = 'visible';
+    });
+    // Also remove collapsed indicator from section titles
+    clone.querySelectorAll('.section-title.collapsed').forEach(function(el) {
+      el.classList.remove('collapsed');
     });
     // Replace each chart canvas with its PNG image
     clone.querySelectorAll('canvas').forEach(function(canvas) {
