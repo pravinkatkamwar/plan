@@ -581,30 +581,37 @@ tbody td.tax-cell  { color: var(--red); }
 
 <header>
   <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px">
-    <!-- Title -->
-    <div>
-      <h1>&#x1F3E6; Retirement Planning Model</h1>
-      <p id="header-subtitle">NJ &middot; Planning to Age 85</p>
+
+    <!-- Left: title + Open/Save (standard left-side file ops) -->
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div>
+        <h1>&#x1F3E6; Retirement Planning Model</h1>
+        <p id="header-subtitle">NJ &middot; Planning to Age 85</p>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <button id="btn-load-file" onclick="document.getElementById('file-load-input').click()" style="padding:6px 12px;background:#1a3a2a;color:#6dd68a;border:1px solid #2d6a4f;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font-mono)" title="Open a previously saved .json file">&#x1F4C2; Open</button>
+        <button id="btn-save-file" onclick="saveToFile()" style="padding:6px 12px;background:#1a3a2a;color:#6dd68a;border:1px solid #2d6a4f;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font-mono)" title="Save inputs to a .json file">&#x1F4BE; Save</button>
+        <input type="file" id="file-load-input" accept=".json" style="display:none" onchange="loadFromFile(event)">
+        <span id="save-status" style="font-size:10px;color:#6fcf97;font-family:var(--font-mono);margin-left:4px"></span>
+      </div>
     </div>
-    <!-- Controls (stacked: mode row + action row) -->
+
+    <!-- Right: print actions + mode / owner controls -->
     <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
       <!-- Mode / owner row -->
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <span id="save-status" style="font-size:10px;color:#6fcf97;font-family:var(--font-mono);min-width:80px;text-align:right"></span>
         <span id="mode-badge" style="font-size:10px;font-family:var(--font-mono);font-weight:700;padding:4px 10px;border-radius:20px;background:#1e3a5a;color:#7a9ab8;letter-spacing:0.5px">GUEST</span>
         <button id="btn-export" onclick="exportInputsJS()" style="background:transparent;color:#e8c96a;border:1px solid #c9a84c;padding:7px 12px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font-mono);letter-spacing:0.3px;display:none" title="Download inputs.js to update site defaults on GitHub">&#x2B07; Update inputs.js</button>
         <button id="btn-login" onclick="showLoginModal()" style="background:transparent;color:#e8c96a;border:1px solid #3a5070;padding:7px 12px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font-mono);letter-spacing:0.3px" title="Owner login">&#x1F512; Login</button>
         <button id="btn-logout" onclick="doLogout()" style="background:transparent;color:#e07070;border:1px solid #6a3030;padding:7px 12px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font-mono);letter-spacing:0.3px;display:none" title="Return to guest mode">&#x1F513; Logout</button>
       </div>
-      <!-- Action row — always visible -->
+      <!-- Print row -->
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-        <button id="btn-save-file" onclick="saveToFile()" style="padding:6px 12px;background:#1a3a2a;color:#6dd68a;border:1px solid #2d6a4f;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font-mono)" title="Download inputs as a .json file to reload later">⬇ Save to File</button>
-        <button id="btn-load-file" onclick="document.getElementById('file-load-input').click()" style="padding:6px 12px;background:#1a3a2a;color:#6dd68a;border:1px solid #2d6a4f;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font-mono)" title="Load inputs from a previously saved .json file">⬆ Load from File</button>
-        <input type="file" id="file-load-input" accept=".json" style="display:none" onchange="loadFromFile(event)">
-        <button id="btn-print-summary" onclick="printSummary()" style="padding:6px 12px;background:#1e2d45;color:#a0b4c8;border:1px solid #3a5070;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font-mono)" title="One-page visual summary">&#x1F5A8; Summary</button>
-        <button id="btn-print-pdf" onclick="printAllTabs()" style="padding:6px 12px;background:#1e2d45;color:#a0b4c8;border:1px solid #3a5070;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font-mono)" title="Full report — all tabs and charts">&#x1F5A8; Print PDF</button>
+        <button id="btn-print-summary" onclick="printSummary()" style="padding:6px 12px;background:#1e2d45;color:#a0b4c8;border:1px solid #3a5070;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font-mono)" title="One-page summary of key numbers">&#x1F5A8; Print Summary</button>
+        <button id="btn-print-pdf" onclick="printAllTabs()" style="padding:6px 12px;background:#1e2d45;color:#a0b4c8;border:1px solid #3a5070;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font-mono)" title="Full report — all tabs and charts">&#x1F5A8; Print Full Report</button>
       </div>
     </div>
+
   </div>
 </header>
 
@@ -702,17 +709,17 @@ tbody td.tax-cell  { color: var(--red); }
   <div class="section-title collapsible" onclick="toggleSection(this)">Wife Details</div>
   <div class="collapsible-body">
   <div class="input-grid">
-    <div class="input-row"><label>Wife Date of Birth</label><input type="date" id="i_sp_dob" value="1971-01-16" onchange="calcAgeFromDOB()" style="background:#1e2d45;color:#e8c96a;border:1px solid #3a5070;padding:6px;border-radius:4px;font-size:13px"></div>
-    <div class="input-row"><label>Wife Age <span style="color:#7a8fa0;font-size:10px">(auto)</span></label><input type="number" id="i_sp_age" value="55" style="background:#2a3f5a;color:#a0b4c8" readonly></div>
-    <div class="input-row"><label>Wife Retirement Age</label><input type="number" id="i_sp_ret" value="65"></div>
-    <div class="input-row"><label>Wife Salary ($)</label><input type="number" id="i_sp_salary" value="0"></div>
-    <div class="input-row"><label>Wife 401k Balance ($)</label><input type="number" id="i_sp_401k" value="0"></div>
-    <div class="input-row"><label>Wife 401k Contribution ($)</label><input type="number" id="i_sp_contrib" value="0"></div>
-    <div class="input-row"><label>Wife Match Rate (%)</label><input type="number" id="i_sp_match_rate" value="0"></div>
-    <div class="input-row"><label>Wife Trad IRA ($)</label><input type="number" id="i_trad_sp" value="76000"></div>
-    <div class="input-row"><label>Wife Roth IRA ($)</label><input type="number" id="i_roth_sp" value="11000"></div>
+    <div class="input-row"><label>Date of Birth</label><input type="date" id="i_sp_dob" value="1971-01-16" onchange="calcAgeFromDOB()" style="background:#1e2d45;color:#e8c96a;border:1px solid #3a5070;padding:6px;border-radius:4px;font-size:13px"></div>
+    <div class="input-row"><label>Age <span style="color:#7a8fa0;font-size:10px">(auto)</span></label><input type="number" id="i_sp_age" value="55" style="background:#2a3f5a;color:#a0b4c8" readonly></div>
+    <div class="input-row"><label>Retirement Age</label><input type="number" id="i_sp_ret" value="65"></div>
+    <div class="input-row"><label>Salary ($)</label><input type="number" id="i_sp_salary" value="0"></div>
+    <div class="input-row"><label>401k Balance ($)</label><input type="number" id="i_sp_401k" value="0"></div>
+    <div class="input-row"><label>401k Contribution ($)</label><input type="number" id="i_sp_contrib" value="0"></div>
+    <div class="input-row"><label>Match Rate (%)</label><input type="number" id="i_sp_match_rate" value="0"></div>
+    <div class="input-row"><label>Trad IRA ($)</label><input type="number" id="i_trad_sp" value="76000"></div>
+    <div class="input-row"><label>Roth IRA ($)</label><input type="number" id="i_roth_sp" value="11000"></div>
   </div><!-- end input-grid -->
-  <div class="note" style="margin-bottom:8px">If Wife Salary is $0, she is treated as a <strong>non-working wife</strong> — wife SS benefit (50% of your FRA benefit) applies and no 401k contributions are added. If salary &gt; $0, her income and contributions are included in portfolio growth and joint MAGI (affects IRMAA).</div>
+  <div class="note" style="margin-bottom:8px">If Salary is $0, she is treated as <strong>non-working</strong> — spousal SS benefit (50% of your FRA benefit) applies and no 401k contributions are added. If salary &gt; $0, her income and contributions are included in portfolio growth and joint MAGI (affects IRMAA).</div>
   </div><!-- end collapsible-body: Wife Details -->
 
   <div class="section-title collapsible collapsed" onclick="toggleSection(this)">Growth &amp; Social Security</div>
@@ -808,7 +815,7 @@ tbody td.tax-cell  { color: var(--red); }
 
   <div class="note" style="margin-top:10px">
     <strong>How to use:</strong> Edit any value above then tap <em>Calculate All Tabs</em>. &middot;
-    Use <strong>⬇ Save to File</strong> and <strong>⬆ Load from File</strong> in the header to save and restore your inputs on any device. &middot;
+    Use <strong>💾 Save</strong> and <strong>📂 Open</strong> in the header to save and restore your inputs on any device. &middot;
     <strong>Save/Restore Scenario</strong> uses clipboard for quick copy-paste comparisons.
   </div>
 
@@ -831,6 +838,16 @@ tbody td.tax-cell  { color: var(--red); }
       <tbody id="roth-body"></tbody>
     </table>
   </div>
+  <div class="note" style="margin-top:10px;font-size:11px;line-height:1.8">
+    <strong>IRMAA Tier legend</strong> (MFJ, applied 2 years after income year) &mdash;
+    <span style="color:#2d6a4f;font-weight:600">Base</span>: MAGI &le; $206k &mdash; no surcharge &nbsp;&middot;&nbsp;
+    <span style="color:#5b7ec9;font-weight:600">Tier 1</span>: $206k&ndash;$258k &mdash; +$888/yr per person &nbsp;&middot;&nbsp;
+    <span style="color:#d97706;font-weight:600">Tier 2</span>: $258k&ndash;$322k &mdash; +$2,220/yr per person &nbsp;&middot;&nbsp;
+    <span style="color:#b5231a;font-weight:600">Tier 3</span>: $322k&ndash;$386k &mdash; +$3,552/yr per person &nbsp;&middot;&nbsp;
+    <span style="color:#7c3aed;font-weight:600">Tier 4</span>: $386k&ndash;$750k &mdash; +$4,884/yr per person &nbsp;&middot;&nbsp;
+    <span style="color:#374151;font-weight:600">Tier 5</span>: &gt;$750k &mdash; +$5,220/yr per person.
+    Both spouses on Medicare each pay the surcharge (household cost is 2&times;).
+  </div>
 
 </div>
 
@@ -844,7 +861,7 @@ tbody td.tax-cell  { color: var(--red); }
       <thead><tr>
         <th>Age</th>
         <th>Living (+infl)</th><th>Mortgage</th><th>Prop Tax+Ins</th>
-        <th>Wife Ins</th><th>Medicare+IRMAA</th>
+        <th>Wife Ins</th><th title="Your Medicare Part B+IRMAA (HSA-covered) + Spouse Medicare Part B+IRMAA (from withdrawals) once spouse reaches 65">Medicare+IRMAA ⓘ</th>
         <th>Total Needs</th><th>Your SS</th><th>Wife SS</th>
         <th>Trad 401k Draw</th><th>Roth IRA Draw</th><th>Brokerage Draw</th><th>HSA Draw</th>
         <th>Fed Tax</th><th>State Tax</th><th>IRMAA</th>
@@ -1069,6 +1086,24 @@ tbody td.tax-cell  { color: var(--red); }
         <div class="chart-wrap" style="width:240px;height:240px"><canvas id="chart-expense"></canvas></div>
         <div id="chart-expense-legend" style="width:100%;font-size:12px;line-height:1.9"></div>
       </div>
+    </div>
+  </div>
+
+  <!-- Income Sources — full width stacked bar -->
+  <div class="chart-section" style="margin-top:16px">
+    <h3>Annual Income Sources in Retirement ($k)</h3>
+    <div class="chart-wrap" style="height:300px"><canvas id="chart-income-sources"></canvas></div>
+  </div>
+
+  <!-- 2-column row: Cash Flow + Withdrawal Rate -->
+  <div class="chart-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+    <div class="chart-section" style="margin-top:0">
+      <h3>Cash Flow: Income vs. Expenses ($k)</h3>
+      <div class="chart-wrap" style="height:280px"><canvas id="chart-cashflow"></canvas></div>
+    </div>
+    <div class="chart-section" style="margin-top:0">
+      <h3>Withdrawal Rate (% of Portfolio)</h3>
+      <div class="chart-wrap" style="height:280px"><canvas id="chart-withdrawal-rate"></canvas></div>
     </div>
   </div>
 </div>
@@ -1620,11 +1655,16 @@ function renderWithdrawal(rows, INP) {
         '<td colspan="5" style="text-align:center;color:#5b7ec9;font-style:italic;font-family:Georgia,serif">Working — Salary ' + salaryIncome + '/yr</td>' +
         '<td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>';
     } else {
-      var surplusCell = r.surplus >= 0 ? fmt(r.surplus) : '<span style="color:#b5231a">' + fmt(r.surplus) + '</span>';
+      var roundedSurplus = Math.round(r.surplus);
+      var surplusCell = roundedSurplus === 0
+        ? '$0'
+        : roundedSurplus > 0
+          ? fmt(r.surplus)
+          : '<span style="color:#b5231a">' + fmt(r.surplus) + '</span>';
       // Medicare column: show combined total; your Medicare is HSA-covered, spouse's is from withdrawals
-      var medDisplay = r.spMedicareYr > 0
-        ? fmt(r.medicareYr + r.spMedicareYr) + '<span style="font-size:9px;color:#aaa" title="Your Medicare via HSA + Spouse Medicare via withdrawals"> (2)</span>'
-        : fmt(r.medicareYr);
+      // The (2) indicator is shown via the column header title — not inline — to keep numbers aligned
+      var medDisplay = fmt(r.spMedicareYr > 0 ? r.medicareYr + r.spMedicareYr : r.medicareYr);
+      if (r.spMedicareYr > 0) medDisplay = '<span style="text-decoration:underline dotted;cursor:default" title="Your Medicare (HSA-covered) + Spouse Medicare">' + medDisplay + '</span>';
       tr.innerHTML =
         '<td>' + r.age + '</td>' +
         '<td>' + fmt(r.living) + '</td>' +
@@ -2920,7 +2960,163 @@ function renderCharts(rows, INP) {
     });
   })();
 
-  // ── 3. PORTFOLIO BALANCE — multi-line in Portfolio tab ───────
+  // ── 3. INCOME SOURCES — stacked bar in Charts tab ────────────
+  (function() {
+    destroyChart('income-sources');
+    var retRows = rows.filter(function(r){ return !r.isWorking && !r.isSeed; });
+    var ages    = retRows.map(function(r){ return r.age; });
+    var yourSS  = retRows.map(function(r){ return +(r.ss_income / 1000).toFixed(1); });
+    var spSS    = retRows.map(function(r){ return +((r.sp_ss || 0) / 1000).toFixed(1); });
+    var tradDraw= retRows.map(function(r){ return +(r.tradDraw / 1000).toFixed(1); });
+    var rothDraw= retRows.map(function(r){ return +(r.rothDraw / 1000).toFixed(1); });
+    var brokDraw= retRows.map(function(r){ return +(r.brokDraw / 1000).toFixed(1); });
+
+    var ctx = document.getElementById('chart-income-sources');
+    if (!ctx) return;
+    window._charts['income-sources'] = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ages,
+        datasets: [
+          { label: 'Your SS',          data: yourSS,   backgroundColor: 'rgba(37,99,235,0.85)',  stack: 'income' },
+          { label: 'Spouse SS',        data: spSS,     backgroundColor: 'rgba(8,145,178,0.85)',  stack: 'income' },
+          { label: 'Trad 401k/IRA',   data: tradDraw, backgroundColor: 'rgba(181,35,26,0.80)',  stack: 'income' },
+          { label: 'Roth',             data: rothDraw, backgroundColor: 'rgba(45,106,79,0.85)',  stack: 'income' },
+          { label: 'Brokerage',        data: brokDraw, backgroundColor: 'rgba(234,88,12,0.80)',  stack: 'income' }
+        ]
+      },
+      options: {
+        responsive: true,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { position: 'top', labels: { font: { size: 11 }, color: '#374151' } },
+          tooltip: {
+            callbacks: {
+              label: function(ctx) {
+                if (ctx.parsed.y === 0) return null;
+                return ' ' + ctx.dataset.label + ': $' + ctx.parsed.y.toFixed(1) + 'k';
+              },
+              footer: function(items) {
+                var total = items.reduce(function(s, i){ return s + i.parsed.y; }, 0);
+                return 'Total: $' + total.toFixed(1) + 'k';
+              }
+            }
+          }
+        },
+        scales: {
+          x: { stacked: true, ticks: { color: '#374151', font: { size: 11 } }, grid: { color: '#e5e7eb' } },
+          y: { stacked: true, beginAtZero: true,
+               ticks: { color: '#374151', font: { size: 11 }, callback: function(v){ return '$' + v + 'k'; } },
+               grid: { color: '#e5e7eb' } }
+        }
+      }
+    });
+  })();
+
+  // ── 4. CASH FLOW — income vs expenses line chart ──────────────
+  (function() {
+    destroyChart('cashflow');
+    var retRows = rows.filter(function(r){ return !r.isWorking && !r.isSeed; });
+    var ages    = retRows.map(function(r){ return r.age; });
+    var income  = retRows.map(function(r){
+      return +((r.ss_income + (r.sp_ss||0) + r.tradDraw + r.rothDraw + r.brokDraw + (r.hsaPay||0)) / 1000).toFixed(1);
+    });
+    // Expenses = living needs + federal + state taxes (total cash out the door)
+    var expenses= retRows.map(function(r){
+      return +((r.totalNeeds + (r.ft||0) + (r.stateTax||0)) / 1000).toFixed(1);
+    });
+    // Surplus = difference between what comes in and what goes out
+    var surplus = income.map(function(inc, i){ return +(inc - expenses[i]).toFixed(1); });
+
+    var ctx = document.getElementById('chart-cashflow');
+    if (!ctx) return;
+    window._charts['cashflow'] = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: ages,
+        datasets: [
+          { label: 'Total Income',   data: income,   borderColor: '#2d6a4f', backgroundColor: 'rgba(45,106,79,0.10)',
+            borderWidth: 2, pointRadius: 2, fill: true, tension: 0.3 },
+          { label: 'Total Expenses', data: expenses, borderColor: '#b5231a', backgroundColor: 'rgba(181,35,26,0.08)',
+            borderWidth: 2, pointRadius: 2, fill: true, tension: 0.3, borderDash: [5,3] },
+          { label: 'Surplus / Gap',  data: surplus,  borderColor: '#c9a84c', backgroundColor: 'transparent',
+            borderWidth: 1.5, pointRadius: 2, fill: false, tension: 0.3, borderDash: [3,3] }
+        ]
+      },
+      options: {
+        responsive: true,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { position: 'top', labels: { font: { size: 11 }, color: '#374151' } },
+          tooltip: {
+            callbacks: {
+              label: function(ctx) { return ' ' + ctx.dataset.label + ': $' + ctx.parsed.y.toFixed(1) + 'k'; }
+            }
+          }
+        },
+        scales: {
+          x: { ticks: { color: '#374151', font: { size: 11 } }, grid: { color: '#e5e7eb' } },
+          y: { ticks: { color: '#374151', font: { size: 11 }, callback: function(v){ return '$' + v + 'k'; } },
+               grid: { color: '#e5e7eb' }, beginAtZero: true }
+        }
+      }
+    });
+  })();
+
+  // ── 5. WITHDRAWAL RATE — % of portfolio per year ─────────────
+  (function() {
+    destroyChart('withdrawal-rate');
+    var allNonSeed = rows.filter(function(r){ return !r.isSeed; });
+    var retRows = rows.filter(function(r){ return !r.isWorking && !r.isSeed; });
+    var ages  = retRows.map(function(r){ return r.age; });
+    var rates = retRows.map(function(r) {
+      var idx    = allNonSeed.indexOf(r);
+      var begPort = idx > 0 ? allNonSeed[idx - 1].totalPort : r.totalPort;
+      var drawn  = r.tradDraw + r.rothDraw + r.brokDraw;
+      return begPort > 0 ? Math.round(drawn / begPort * 1000) / 10 : 0;
+    });
+    var safeLine = ages.map(function(){ return 4; }); // 4% guideline
+
+    var ctx = document.getElementById('chart-withdrawal-rate');
+    if (!ctx) return;
+    window._charts['withdrawal-rate'] = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: ages,
+        datasets: [
+          { label: 'Withdrawal Rate (%)', data: rates,
+            borderColor: '#1a3a6b', backgroundColor: 'rgba(26,58,107,0.10)',
+            borderWidth: 2, pointRadius: 2, fill: true, tension: 0.3 },
+          { label: '4% Guideline',        data: safeLine,
+            borderColor: 'rgba(201,168,76,0.8)', backgroundColor: 'transparent',
+            borderWidth: 1.5, pointRadius: 0, fill: false, borderDash: [6,4] }
+        ]
+      },
+      options: {
+        responsive: true,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { position: 'top', labels: { font: { size: 11 }, color: '#374151' } },
+          tooltip: {
+            callbacks: {
+              label: function(ctx) {
+                if (ctx.dataset.label === '4% Guideline') return null;
+                return ' ' + ctx.dataset.label + ': ' + ctx.parsed.y.toFixed(1) + '%';
+              }
+            }
+          }
+        },
+        scales: {
+          x: { ticks: { color: '#374151', font: { size: 11 } }, grid: { color: '#e5e7eb' } },
+          y: { ticks: { color: '#374151', font: { size: 11 }, callback: function(v){ return v + '%'; } },
+               grid: { color: '#e5e7eb' }, beginAtZero: true,
+               suggestedMax: 8 }
+        }
+      }
+    });
+  })();
+
+  // ── 6. PORTFOLIO BALANCE — multi-line in Portfolio tab ───────
   (function() {
     destroyChart('portfolio');
     var ages  = rows.filter(function(r){ return !r.isSeed; }).map(function(r){ return r.age; });
@@ -3026,7 +3222,7 @@ function printAllTabs() {
 
   // 2. Capture live chart canvases as PNG data URLs (always print in full color)
   var chartImgs = {};
-  ['chart-portfolio', 'chart-roth', 'chart-expense'].forEach(function(id) {
+  ['chart-portfolio', 'chart-roth', 'chart-expense', 'chart-income-sources', 'chart-cashflow', 'chart-withdrawal-rate'].forEach(function(id) {
     var c = document.getElementById(id);
     if (c) try { chartImgs[id] = c.toDataURL('image/png'); } catch(e) {}
   });
