@@ -43,6 +43,7 @@ window.GUEST_INPUTS = {
   // ── Expenses ──────────────────────────────────────────────
   i_living:          7000,
   i_mortgage:        3000,
+  i_mortgage_bal:    350000,
   i_payoff_mortgage: false,
   i_prop_tax:        15000,
   i_home_ins:        1500,

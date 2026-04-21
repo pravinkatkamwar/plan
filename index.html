@@ -510,7 +510,7 @@ tbody td.tax-cell  { color: var(--red); }
 
   /* hide UI chrome */
   .tab-nav, #launcher-overlay, #login-modal,
-  .calc-btn, #btn-export, #btn-login, #btn-logout,
+  .calc-btn, #btn-login, #btn-logout,
   #mode-badge, #save-status,
   #btn-save-file, #btn-load-file, #btn-print-summary, #btn-print-pdf,
   button[onclick*="saveScenario"], button[onclick*="restoreScenario"],
@@ -601,7 +601,6 @@ tbody td.tax-cell  { color: var(--red); }
       <!-- Mode / owner row -->
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <span id="mode-badge" style="font-size:10px;font-family:var(--font-mono);font-weight:700;padding:4px 10px;border-radius:20px;background:#1e3a5a;color:#7a9ab8;letter-spacing:0.5px">GUEST</span>
-        <button id="btn-export" onclick="exportInputsJS()" style="background:transparent;color:#e8c96a;border:1px solid #c9a84c;padding:7px 12px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font-mono);letter-spacing:0.3px;display:none" title="Download inputs.js to update site defaults on GitHub">&#x2B07; Update inputs.js</button>
         <button id="btn-login" onclick="showLoginModal()" style="background:transparent;color:#e8c96a;border:1px solid #3a5070;padding:7px 12px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font-mono);letter-spacing:0.3px" title="Owner login">&#x1F512; Login</button>
         <button id="btn-logout" onclick="doLogout()" style="background:transparent;color:#e07070;border:1px solid #6a3030;padding:7px 12px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font-mono);letter-spacing:0.3px;display:none" title="Return to guest mode">&#x1F513; Logout</button>
       </div>
@@ -743,6 +742,7 @@ tbody td.tax-cell  { color: var(--red); }
     <div class="input-row"><label>Monthly Living Expenses ($)</label><input type="number" id="i_living" value="7000"></div>
     <div class="input-row"><label>Mortgage Monthly ($)</label><input type="number" id="i_mortgage" value="2250"></div>
     <div class="input-row"><label>Pay Off Mortgage at Retirement</label><input type="checkbox" id="i_payoff_mortgage" onchange="runAll()" style="width:auto;height:24px;margin:0"></div>
+    <div class="input-row"><label>Remaining Mortgage Balance ($)</label><input type="number" id="i_mortgage_bal" value="0" min="0" step="1000" title="Outstanding principal at retirement — deducted from brokerage when Pay Off is checked"></div>
     <div class="input-row"><label>Property Tax Annual ($)</label><input type="number" id="i_prop_tax" value="13500"></div>
     <div class="input-row"><label>Home Insurance Annual ($)</label><input type="number" id="i_home_ins" value="1500"></div>
     <div class="input-row"><label>Medicare Part B / mo ($)</label><input type="number" id="i_medicare" value="185"></div>
@@ -1249,7 +1249,8 @@ function calc(overrides) {
     ss_age:   v('i_ss_age'),
     sp_ss_age: v('i_sp_ss_age'),
     living:   v('i_living'),
-    mortgage: v('i_mortgage'),
+    mortgage:     v('i_mortgage'),
+    mortgage_bal: v('i_mortgage_bal') || 0,
     prop_tax: v('i_prop_tax'),
     home_ins: v('i_home_ins'),
     medicare: v('i_medicare'),
@@ -1306,6 +1307,7 @@ function calc(overrides) {
 
   var rows = [];
   var numYears = INP.life - INP.age; // dynamic: from current age to life expectancy
+  var mortgagePaidOff = false; // tracks one-time brokerage deduction at retirement
 
   // Seed "today" row: current balances before any growth (age = INP.age)
   var seedTrad = INP.trad401k, seedRoth = INP.roth401k + INP.roth_ira;
@@ -1398,6 +1400,12 @@ function calc(overrides) {
         conv = Math.min(conv, irmaaFreeCap);
       }
       var newTradSp    = (tradSp + spContrib) * (1 + INP.growth);
+
+      // One-time mortgage payoff: deduct remaining balance from brokerage in first retirement year
+      if (INP.payoff_mortgage && INP.mortgage_bal > 0 && !mortgagePaidOff) {
+        brok = Math.max(0, brok - INP.mortgage_bal);
+        mortgagePaidOff = true;
+      }
 
       var living     = INP.living * 12 * inflF;
       var housing    = INP.payoff_mortgage ? 0 : INP.mortgage * 12;
@@ -2544,6 +2552,7 @@ function renderMortgageCompare(INP) {
   var totalSaved = annualSaving * (INP.life - (INP.ret || 65));
   var portDiff = lastWithout.totalPort - lastWith.totalPort;
   var nwDiff   = lastWithout.netWorth  - lastWith.netWorth;
+  var payoffBal = INP.mortgage_bal || 0;
 
   var html =
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:10px">' +
@@ -2562,12 +2571,17 @@ function renderMortgageCompare(INP) {
     '<div class="tbl-wrap"><table style="min-width:400px"><thead><tr>' +
     '<th style="text-align:left">Metric</th><th>Carry Mortgage</th><th>Pay Off at Retirement</th><th>Difference</th>' +
     '</tr></thead><tbody>' +
-    '<tr style="background:#f0ebe0"><td style="text-align:left;font-weight:600">Monthly cost</td><td>' + fmt(INP.mortgage) + '/mo</td><td>$0</td><td style="color:var(--green2);font-weight:600">–' + fmt(INP.mortgage) + '/mo</td></tr>' +
-    '<tr style="background:#faf7f2"><td style="text-align:left;font-weight:600">Total interest avoided</td><td>—</td><td>' + fmtK(totalSaved) + '</td><td style="color:var(--green2);font-weight:600">+' + fmtK(totalSaved) + '</td></tr>' +
-    '<tr style="background:#f0ebe0"><td style="text-align:left;font-weight:600">Portfolio age ' + INP.life + '</td><td>' + fmtK(lastWith.totalPort) + '</td><td>' + fmtK(lastWithout.totalPort) + '</td><td style="color:' + (portDiff>=0?'var(--green2)':'var(--red)') + ';font-weight:700">' + (portDiff>=0?'+':'') + fmtK(portDiff) + '</td></tr>' +
-    '<tr style="background:#faf7f2"><td style="text-align:left;font-weight:600">Net worth age ' + INP.life + '</td><td>' + fmtK(lastWith.netWorth) + '</td><td>' + fmtK(lastWithout.netWorth) + '</td><td style="color:' + (nwDiff>=0?'var(--green2)':'var(--red)') + ';font-weight:700">' + (nwDiff>=0?'+':'') + fmtK(nwDiff) + '</td></tr>' +
+    '<tr style="background:#f0ebe0"><td style="text-align:left;font-weight:600">Lump-sum payoff (from brokerage)</td><td>—</td><td style="color:var(--red)">' + (payoffBal > 0 ? '–' + fmtK(payoffBal) : '<span style="color:#888;font-size:11px">Enter balance above</span>') + '</td><td style="color:var(--red)">' + (payoffBal > 0 ? '–' + fmtK(payoffBal) : '—') + '</td></tr>' +
+    '<tr style="background:#faf7f2"><td style="text-align:left;font-weight:600">Monthly cost eliminated</td><td>' + fmt(INP.mortgage) + '/mo</td><td>$0</td><td style="color:var(--green2);font-weight:600">–' + fmt(INP.mortgage) + '/mo</td></tr>' +
+    '<tr style="background:#f0ebe0"><td style="text-align:left;font-weight:600">Payments avoided over retirement</td><td>—</td><td>' + fmtK(totalSaved) + '</td><td style="color:var(--green2);font-weight:600">+' + fmtK(totalSaved) + '</td></tr>' +
+    '<tr style="background:#faf7f2"><td style="text-align:left;font-weight:600">Portfolio age ' + INP.life + '</td><td>' + fmtK(lastWith.totalPort) + '</td><td>' + fmtK(lastWithout.totalPort) + '</td><td style="color:' + (portDiff>=0?'var(--green2)':'var(--red)') + ';font-weight:700">' + (portDiff>=0?'+':'') + fmtK(portDiff) + '</td></tr>' +
+    '<tr style="background:#f0ebe0"><td style="text-align:left;font-weight:600">Net worth age ' + INP.life + '</td><td>' + fmtK(lastWith.netWorth) + '</td><td>' + fmtK(lastWithout.netWorth) + '</td><td style="color:' + (nwDiff>=0?'var(--green2)':'var(--red)') + ';font-weight:700">' + (nwDiff>=0?'+':'') + fmtK(nwDiff) + '</td></tr>' +
     '</tbody></table></div>' +
-    '<div class="note" style="margin-top:8px">Note: paying off the mortgage frees up cash flow which the model redirects to reduce withdrawals, leaving more to compound. The lump-sum payoff itself is not modeled — this shows the <em>ongoing cash flow</em> benefit only.</div>';
+    '<div class="note" style="margin-top:8px">' +
+    (payoffBal > 0
+      ? 'The <strong>' + fmtK(payoffBal) + ' remaining balance</strong> is deducted from the brokerage account at retirement. The comparison shows the net effect: lower brokerage compounding vs. eliminating ' + fmt(INP.mortgage) + '/mo in payments. A positive portfolio difference means paying off wins over your ' + INP.life + '-year horizon.'
+      : '⚠ Enter <strong>Remaining Mortgage Balance</strong> above to model the full lump-sum impact. Without it, only the cash flow benefit (eliminated payments) is shown, which overstates the advantage.') +
+    '</div>';
 
   el.innerHTML = html;
 }
@@ -2579,7 +2593,7 @@ var SCENARIO_FIELDS = [
   'i_roth_ira','i_roth_sp','i_trad_sp','i_hsa','i_hsa_c','i_brok',
   'i_growth','i_infl','i_ss_cola','i_std_ded','i_conv_tgt',
   'i_ss65','i_ss67','i_ss70','i_ss_age','i_sp_ss_age',
-  'i_living','i_mortgage','i_prop_tax','i_home_ins','i_medicare','i_med_infl','i_sp_ins',
+  'i_living','i_mortgage','i_mortgage_bal','i_prop_tax','i_home_ins','i_medicare','i_med_infl','i_sp_ins',
   'i_sp_dob','i_sp_ret','i_sp_salary','i_sp_401k','i_sp_contrib','i_sp_match_rate',
   'i_trad_sp','i_roth_sp','i_ss_taxable_pct','i_rmd_age','i_ltcg_rate','i_home_val','i_annual_gift','i_gift_age'
 ];
@@ -3280,7 +3294,7 @@ function printAllTabs() {
     '.panel:first-child{page-break-before:avoid}' +
     '.tab-nav,.calc-btn,input[type="file"],' +
     '#launcher-overlay,#login-modal,#save-status,' +
-    '#btn-export,#btn-login,#btn-logout,#mode-badge,' +
+    '#btn-login,#btn-logout,#mode-badge,' +
     '#btn-save-file,#btn-load-file,#btn-print-summary,#btn-print-pdf,' +
     'button[onclick*="saveScenario"],button[onclick*="restoreScenario"]' +
     '{display:none!important}' +
@@ -3341,42 +3355,6 @@ function collectInputs() {
   return data;
 }
 
-// ── Export updated inputs.js file ─────────────────────────────
-function exportInputsJS() {
-  const data = collectInputs();
-  const sections = {
-    'your_details':       ['i_name','i_dob','i_ret','i_life','i_state','i_salary','i_trad401k','i_roth401k','i_contrib','i_match','i_roth_ira','i_hsa','i_hsa_c','i_brok'],
-    'wife_details':       ['i_sp_dob','i_sp_ret','i_sp_salary','i_sp_401k','i_sp_contrib','i_sp_match_rate','i_trad_sp','i_roth_sp'],
-    'growth_and_ss':      ['i_growth','i_infl','i_ss_cola','i_ss65','i_ss67','i_ss70','i_ss_age','i_sp_ss_age'],
-    'expenses':           ['i_living','i_mortgage','i_payoff_mortgage','i_prop_tax','i_home_ins','i_medicare','i_med_infl','i_sp_ins','i_home_val','i_annual_gift','i_gift_age'],
-    'tax_and_conversion': ['i_target_bracket','i_conv_tgt','i_avoid_irmaa','i_std_ded','i_ss_taxable_pct','i_rmd_age','i_ltcg_rate']
-  };
-  const pad = (s, len) => s.padEnd(len);
-  let lines = ['// ── Retirement Planner — Default Inputs ─────────────────────',
-               '// Edit values here, save the file, push to GitHub, then refresh.',
-               '',
-               'window.RETIREMENT_INPUTS = {'];
-  Object.entries(sections).forEach(([sec, keys], si) => {
-    lines.push('');
-    lines.push('  // ── ' + sec.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) + ' ──');
-    keys.forEach((k, ki) => {
-      if (!(k in data)) return;
-      const v = typeof data[k] === 'string' ? `"${data[k]}"` : data[k];
-      const isLast = si === Object.keys(sections).length-1 && ki === keys.length-1;
-      lines.push(`  ${pad(k+':', 22)} ${v}${isLast ? '' : ','}`);
-    });
-  });
-  lines.push('');
-  lines.push('};');
-  const blob = new Blob([lines.join('\n')], {type: 'text/javascript'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'inputs.js';
-  a.click();
-  const s = document.getElementById('save-status');
-  s.textContent = '↓ Exported';
-  setTimeout(() => s.textContent = '', 2500);
-}
 
 // ── Save all inputs to a local .json file ────────────────────
 function saveToFile() {
@@ -3452,7 +3430,6 @@ function updateHeader(name, isOwner) {
   }
   // Show/hide buttons
   const show = v => s => { const el = document.getElementById(s); if(el) el.style.display = v; };
-  ['btn-export'].forEach(show(isOwner ? 'inline-block' : 'none'));
   ['btn-login'].forEach(show(isOwner ? 'none' : 'inline-block'));
   ['btn-logout'].forEach(show(isOwner ? 'inline-block' : 'none'));
 }
