@@ -639,7 +639,7 @@ tbody td.tax-cell  { color: var(--red); }
     <div class="input-row"><label>Retirement Age</label><input type="number" id="i_ret" value="65"></div>
     <div class="input-row"><label>Life Expectancy</label><input type="number" id="i_life" value="85"></div>
     <div class="input-row"><label>State of Residence</label>
-      <select id="i_state" onchange="runAll()">
+      <select id="i_state" onchange="setHomeApprec(this.value); runAll()">
         <option value="AK">AK – Alaska (0%)</option>
         <option value="AL">AL – Alabama (5%)</option>
         <option value="AR">AR – Arkansas (4.4%)</option>
@@ -740,15 +740,18 @@ tbody td.tax-cell  { color: var(--red); }
   <div class="collapsible-body collapsed">
   <div class="input-grid">
     <div class="input-row"><label>Monthly Living Expenses ($)</label><input type="number" id="i_living" value="7000"></div>
-    <div class="input-row"><label>Mortgage Monthly ($)</label><input type="number" id="i_mortgage" value="2250"></div>
+    <div class="input-row"><label>Mortgage Monthly ($)</label><input type="number" id="i_mortgage" value="2250" oninput="autoCalcMortgageBal()"></div>
+    <div class="input-row"><label>Mortgage Years Remaining</label><input type="number" id="i_mortgage_yrs" value="0" min="0" max="30" step="1" title="Years left on the mortgage today — payments stop automatically when term ends" oninput="autoCalcMortgageBal()"></div>
+    <div class="input-row"><label>Mortgage Interest Rate (%)</label><input type="number" id="i_mortgage_rate" value="0" min="0" max="15" step="0.1" title="Used to calculate remaining balance at retirement" oninput="autoCalcMortgageBal()"></div>
     <div class="input-row"><label>Pay Off Mortgage at Retirement</label><input type="checkbox" id="i_payoff_mortgage" onchange="runAll()" style="width:auto;height:24px;margin:0"></div>
-    <div class="input-row"><label>Remaining Mortgage Balance ($)</label><input type="number" id="i_mortgage_bal" value="0" min="0" step="1000" title="Outstanding principal at retirement — deducted from brokerage when Pay Off is checked"></div>
+    <div class="input-row"><label>Remaining Balance at Retirement ($)</label><input type="number" id="i_mortgage_bal" value="0" min="0" step="1000" title="Auto-calculated from years/rate above — or enter manually to override"></div>
     <div class="input-row"><label>Property Tax Annual ($)</label><input type="number" id="i_prop_tax" value="13500"></div>
     <div class="input-row"><label>Home Insurance Annual ($)</label><input type="number" id="i_home_ins" value="1500"></div>
     <div class="input-row"><label>Medicare Part B / mo ($)</label><input type="number" id="i_medicare" value="185"></div>
     <div class="input-row"><label>Medicare Inflation Rate (%)</label><input type="number" id="i_med_infl" value="5.0" step="0.1" min="0" max="10"></div>
     <div class="input-row"><label>Wife Private Ins / mo ($) (pre-65)</label><input type="number" id="i_sp_ins" value="800"></div>
     <div class="input-row"><label>Home Value ($)</label><input type="number" id="i_home_val" value="650000" oninput="runAll()"></div>
+    <div class="input-row"><label>Home Appreciation Rate (%)</label><input type="number" id="i_home_apprec" value="4.5" step="0.5" min="0" max="12" title="Annual home appreciation — auto-set from state average; adjust freely" oninput="runAll()"></div>
     <div class="input-row"><label>Annual Gift to Children ($)</label><input type="number" id="i_annual_gift" value="0" oninput="runAll()"></div>
     <div class="input-row"><label>Gift Start Age</label><input type="number" id="i_gift_age" value="70" min="63" max="85" oninput="runAll()"></div>
   </div><!-- end input-grid -->
@@ -1132,6 +1135,18 @@ var STATE_TAX = {
   'WA':0,'WI':0.0765,'WV':0.065,'WY':0
 };
 
+// Long-run home appreciation by state (FHFA 20-yr averages, rounded to 0.5%)
+var STATE_HOME_APPREC = {
+  'AK':3.0,'AL':3.5,'AR':3.5,'AZ':5.0,'CA':6.0,'CO':5.5,'CT':3.5,
+  'DC':5.0,'DE':4.0,'FL':5.5,'GA':4.5,'HI':5.5,'IA':3.0,'ID':5.5,
+  'IL':3.5,'IN':3.5,'KS':3.0,'KY':3.5,'LA':3.0,'MA':5.5,'MD':4.5,
+  'ME':4.5,'MI':3.5,'MN':4.0,'MO':3.5,'MS':3.0,'MT':5.0,'NC':4.5,
+  'ND':3.0,'NE':3.5,'NH':5.0,'NJ':4.5,'NM':4.0,'NV':5.0,'NY':5.0,
+  'OH':3.5,'OK':3.0,'OR':5.5,'PA':4.0,'RI':5.0,'SC':4.5,'SD':3.5,
+  'TN':4.5,'TX':4.5,'UT':5.5,'VA':4.5,'VT':4.5,'WA':6.0,'WI':4.0,
+  'WV':3.0,'WY':3.5
+};
+
 function fmt(n) {
   if (n == null) return '-';
   return '$' + Math.round(n).toLocaleString('en-US');
@@ -1143,6 +1158,45 @@ function fmtK(n) {
 }
 function pct(n) { return (n*100).toFixed(1) + '%'; }
 function v(id) { return parseFloat($(id).value) || 0; }
+
+// Auto-calculate remaining mortgage balance at retirement from amortization formula.
+// Triggered whenever payment, years remaining, or rate changes.
+// Updates i_mortgage_bal so the user can see and override the calculated value.
+function autoCalcMortgageBal() {
+  var pmt  = parseFloat(($('i_mortgage')      || {}).value) || 0;
+  var yrs  = parseFloat(($('i_mortgage_yrs')  || {}).value) || 0;
+  var rate = parseFloat(($('i_mortgage_rate') || {}).value) || 0;
+  var retAge = parseFloat(($('i_ret')         || {}).value) || 65;
+  var curAge = parseFloat(($('i_age')         || {}).value) || 63;
+  var balEl  = $('i_mortgage_bal');
+  if (!balEl) return;
+
+  if (pmt <= 0 || yrs <= 0) { runAll(); return; } // not enough info — leave balance as-is
+
+  var monthsNow    = Math.round(yrs * 12);
+  var monthsToRet  = Math.max(0, Math.round((retAge - curAge) * 12));
+  var monthsAtRet  = Math.max(0, monthsNow - monthsToRet);
+
+  var bal = 0;
+  if (monthsAtRet > 0) {
+    if (rate > 0) {
+      var r = rate / 100 / 12;
+      bal = pmt * (1 - Math.pow(1 + r, -monthsAtRet)) / r;
+    } else {
+      bal = pmt * monthsAtRet; // 0% interest: balance = remaining principal payments
+    }
+  }
+  balEl.value = Math.round(bal);
+  runAll();
+}
+
+// Auto-fill home appreciation rate when state changes (user can still override)
+function setHomeApprec(state) {
+  var el = $('i_home_apprec');
+  if (!el) return;
+  var rate = STATE_HOME_APPREC[state] || 4.0;
+  el.value = rate;
+}
 
 function calcAgeFromDOB() {
   var today = new Date();
@@ -1249,8 +1303,10 @@ function calc(overrides) {
     ss_age:   v('i_ss_age'),
     sp_ss_age: v('i_sp_ss_age'),
     living:   v('i_living'),
-    mortgage:     v('i_mortgage'),
-    mortgage_bal: v('i_mortgage_bal') || 0,
+    mortgage:      v('i_mortgage'),
+    mortgage_yrs:  v('i_mortgage_yrs') || 0,
+    mortgage_rate: v('i_mortgage_rate') || 0,
+    mortgage_bal:  v('i_mortgage_bal') || 0,
     prop_tax: v('i_prop_tax'),
     home_ins: v('i_home_ins'),
     medicare: v('i_medicare'),
@@ -1270,7 +1326,8 @@ function calc(overrides) {
     med_infl:        (v('i_med_infl') || 5.0) / 100,
     avoid_irmaa:     !!($('i_avoid_irmaa') && $('i_avoid_irmaa').checked),
     payoff_mortgage: !!($('i_payoff_mortgage') && $('i_payoff_mortgage').checked),
-    home_val:   v('i_home_val') || 650000,
+    home_val:    v('i_home_val') || 650000,
+    home_apprec: (v('i_home_apprec') || 4.0) / 100,
     annual_gift: v('i_annual_gift') || 0,
     gift_age:   v('i_gift_age') || 70,
     wd_order:        ($('i_wd_order_b') && $('i_wd_order_b').checked) ? 'brok_roth' : 'roth_brok'
@@ -1319,6 +1376,7 @@ function calc(overrides) {
     tradStart: seedTrad, tradEnd: seedTrad, tradBal: seedTrad,
     rothBal: seedRoth, rothSpBal: seedRothSp, tradSpBal: seedTradSp,
     hsaBal: seedHSA, brokBal: seedBrok, totalPort: seedTotal,
+    homeVal: INP.home_val || 650000,
     netWorth: seedTotal + (INP.home_val || 650000),
     yourContrib: 0, matchAmt: 0, hsaContrib: 0, totalContrib: 0, portGrowthAmt: 0,
     ss: 0, ss_taxable: 0, conv: 0, totalTaxable: INP.salary, ft: 0, effRate: 0,
@@ -1372,7 +1430,8 @@ function calc(overrides) {
         stateTax: 0, stateTaxBase: 0,
         tradBal: tradEnd, rothBal: newRoth, rothSpBal: newRothSp, tradSpBal: newTradSp,
         hsaBal: newHSA, brokBal: newBrok, totalPort: totalPort,
-        netWorth: totalPort + (INP.home_val || 650000),
+        homeVal: (INP.home_val || 650000) * Math.pow(1 + INP.home_apprec, age - INP.age),
+        netWorth: totalPort + (INP.home_val || 650000) * Math.pow(1 + INP.home_apprec, age - INP.age),
         yourContrib: yourContrib, matchAmt: matchAmt, hsaContrib: hsaContrib,
         totalContrib: yourContrib + matchAmt + hsaContrib,
         portGrowthAmt: totalPort - (trad + roth + rothSp + tradSp + hsa + brok) - yourContrib - matchAmt - hsaContrib - spContrib
@@ -1408,7 +1467,11 @@ function calc(overrides) {
       }
 
       var living     = INP.living * 12 * inflF;
-      var housing    = INP.payoff_mortgage ? 0 : INP.mortgage * 12;
+      // Mortgage stops when: (a) paid off at retirement, OR (b) term naturally expires mid-retirement
+      var mortYrsAtRet   = Math.max(0, (INP.mortgage_yrs || 0) - (INP.ret - INP.age));
+      var yearsIntoRet   = age - INP.ret; // 0 in first retirement year
+      var mortgageEnded  = INP.mortgage_yrs > 0 && yearsIntoRet >= mortYrsAtRet;
+      var housing    = (INP.payoff_mortgage || mortgageEnded) ? 0 : INP.mortgage * 12;
       var propIns    = (INP.prop_tax + INP.home_ins) * inflF;
       var priorMAGI  = magiQ[0];
       var irmaaYr    = age >= 65 ? irmaa(priorMAGI) : 0;
@@ -1534,7 +1597,8 @@ function calc(overrides) {
         stateTax: stateTax, stateTaxBase: stateTaxBase,
         tradBal: tradEnd, rothBal: newRoth, rothSpBal: newRothSp, tradSpBal: newTradSp,
         hsaBal: newHSA, brokBal: newBrok, totalPort: totalPort,
-        netWorth: totalPort + (INP.home_val || 650000),
+        homeVal: (INP.home_val || 650000) * Math.pow(1 + INP.home_apprec, age - INP.age),
+        netWorth: totalPort + (INP.home_val || 650000) * Math.pow(1 + INP.home_apprec, age - INP.age),
         rmdRequired: rmdRequired, rmdFactor: rmdFactor, rmdExcess: rmdExcess,
         giftAmt: giftAmt
       });
@@ -1806,8 +1870,8 @@ function renderPortfolio(rows, INP) {
     ['Wife Roth IRA', last.rothSpBal, 'TAX-FREE to heirs', true],
     ['HSA Balance', last.hsaBal, 'Taxable to non-wife heirs - use during lifetime', false],
     ['Brokerage', last.brokBal, 'Step-up basis at death - minimal cap gains tax', false],
-    ['Home (estimated)', INP.home_val || 650000, 'Subject to estate rules', false],
-    ['TOTAL ESTATE', last.totalPort + (INP.home_val || 650000), 'All accounts + home', 'total']
+    ['Home (estimated)', last.homeVal || INP.home_val || 650000, 'Age ' + INP.life + ' value at ' + (INP.home_apprec*100).toFixed(1) + '%/yr appreciation', false],
+    ['TOTAL ESTATE', last.totalPort + (last.homeVal || INP.home_val || 650000), 'All accounts + home', 'total']
   ];
   var html = '<div style="color:#e8c96a;font-family:Georgia,serif;font-size:14px;margin-bottom:10px">Estimated Estate at Age 85</div>';
   for (var i=0;i<items.length;i++) {
@@ -2548,39 +2612,70 @@ function renderMortgageCompare(INP) {
   var withoutMort = calc({ payoff_mortgage: true });
   var lastWithout = withoutMort.rows[withoutMort.rows.length - 1];
 
-  var annualSaving = INP.mortgage * 12;
-  var totalSaved = annualSaving * (INP.life - (INP.ret || 65));
+  var annualSaving   = INP.mortgage * 12;
+  var mortYrsAtRet   = Math.max(0, (INP.mortgage_yrs || 0) - (INP.ret - INP.age));
+  var retYears       = INP.life - (INP.ret || 65);
+  // Payments avoided = only the years where mortgage would still be active at retirement
+  var paymentYearsInRet = INP.mortgage_yrs > 0
+    ? Math.min(mortYrsAtRet, retYears)
+    : retYears; // if no term entered, assume all retirement years
+  var totalSaved     = annualSaving * paymentYearsInRet;
+  var mortEndAge     = INP.mortgage_yrs > 0 ? Math.round(INP.age + INP.mortgage_yrs) : null;
+  var mortEndInRet   = mortEndAge && mortEndAge > INP.ret && mortEndAge < INP.life;
   var portDiff = lastWithout.totalPort - lastWith.totalPort;
   var nwDiff   = lastWithout.netWorth  - lastWith.netWorth;
   var payoffBal = INP.mortgage_bal || 0;
 
+  // Home value at life expectancy (same for both scenarios — appreciation is independent of mortgage)
+  var homeAtLife = (INP.home_val || 650000) * Math.pow(1 + (INP.home_apprec || 0.04), INP.life - INP.age);
+
   var html =
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:10px">' +
+
+    // ── Card: Carry Mortgage ──
     '<div style="background:#f0ebe0;border:1px solid #d4c9b8;border-radius:8px;padding:14px">' +
     '<div style="font-size:11px;font-weight:700;color:#555;text-transform:uppercase;margin-bottom:8px">Carry Mortgage</div>' +
     '<div style="font-size:22px;font-weight:700;color:var(--navy)">' + fmtK(lastWith.totalPort) + '</div>' +
-    '<div style="font-size:11px;color:#777">Portfolio at age ' + INP.life + '</div>' +
-    '<div style="font-size:12px;color:#555;margin-top:8px">' + fmt(annualSaving) + '/yr mortgage cost</div>' +
+    '<div style="font-size:11px;color:#888;margin-bottom:6px">Financial portfolio at age ' + INP.life + ' <em>(excl. home)</em></div>' +
+    '<div style="font-size:13px;font-weight:600;color:var(--navy2)">' + fmtK(lastWith.netWorth) + '</div>' +
+    '<div style="font-size:11px;color:#888;margin-bottom:6px">Total net worth incl. home</div>' +
+    '<div style="font-size:12px;color:#555;margin-top:4px">' + fmt(annualSaving) + '/yr mortgage cost</div>' +
     '</div>' +
+
+    // ── Card: Pay Off ──
     '<div style="background:#e8f4ee;border:1px solid #40916c;border-radius:8px;padding:14px">' +
     '<div style="font-size:11px;font-weight:700;color:#2d6a4f;text-transform:uppercase;margin-bottom:8px">Pay Off at Retirement</div>' +
     '<div style="font-size:22px;font-weight:700;color:var(--green)">' + fmtK(lastWithout.totalPort) + '</div>' +
-    '<div style="font-size:11px;color:#777">Portfolio at age ' + INP.life + '</div>' +
-    '<div style="font-size:12px;color:var(--green2);font-weight:600;margin-top:8px">+' + fmtK(portDiff) + ' vs carrying</div>' +
+    '<div style="font-size:11px;color:#888;margin-bottom:6px">Financial portfolio at age ' + INP.life + ' <em>(excl. home)</em></div>' +
+    '<div style="font-size:13px;font-weight:600;color:var(--green2)">' + fmtK(lastWithout.netWorth) + '</div>' +
+    '<div style="font-size:11px;color:#888;margin-bottom:6px">Total net worth incl. home</div>' +
+    '<div style="font-size:12px;color:var(--green2);font-weight:600;margin-top:4px">' + (portDiff >= 0 ? '+' : '') + fmtK(portDiff) + ' portfolio vs carrying</div>' +
     '</div></div>' +
+
+    // ── Comparison table ──
     '<div class="tbl-wrap"><table style="min-width:400px"><thead><tr>' +
     '<th style="text-align:left">Metric</th><th>Carry Mortgage</th><th>Pay Off at Retirement</th><th>Difference</th>' +
     '</tr></thead><tbody>' +
-    '<tr style="background:#f0ebe0"><td style="text-align:left;font-weight:600">Lump-sum payoff (from brokerage)</td><td>—</td><td style="color:var(--red)">' + (payoffBal > 0 ? '–' + fmtK(payoffBal) : '<span style="color:#888;font-size:11px">Enter balance above</span>') + '</td><td style="color:var(--red)">' + (payoffBal > 0 ? '–' + fmtK(payoffBal) : '—') + '</td></tr>' +
-    '<tr style="background:#faf7f2"><td style="text-align:left;font-weight:600">Monthly cost eliminated</td><td>' + fmt(INP.mortgage) + '/mo</td><td>$0</td><td style="color:var(--green2);font-weight:600">–' + fmt(INP.mortgage) + '/mo</td></tr>' +
-    '<tr style="background:#f0ebe0"><td style="text-align:left;font-weight:600">Payments avoided over retirement</td><td>—</td><td>' + fmtK(totalSaved) + '</td><td style="color:var(--green2);font-weight:600">+' + fmtK(totalSaved) + '</td></tr>' +
-    '<tr style="background:#faf7f2"><td style="text-align:left;font-weight:600">Portfolio age ' + INP.life + '</td><td>' + fmtK(lastWith.totalPort) + '</td><td>' + fmtK(lastWithout.totalPort) + '</td><td style="color:' + (portDiff>=0?'var(--green2)':'var(--red)') + ';font-weight:700">' + (portDiff>=0?'+':'') + fmtK(portDiff) + '</td></tr>' +
-    '<tr style="background:#f0ebe0"><td style="text-align:left;font-weight:600">Net worth age ' + INP.life + '</td><td>' + fmtK(lastWith.netWorth) + '</td><td>' + fmtK(lastWithout.netWorth) + '</td><td style="color:' + (nwDiff>=0?'var(--green2)':'var(--red)') + ';font-weight:700">' + (nwDiff>=0?'+':'') + fmtK(nwDiff) + '</td></tr>' +
+    '<tr style="background:#f0ebe0"><td style="text-align:left;font-weight:600">Mortgage term ends</td>' +
+      '<td>' + (mortEndAge ? 'Age ' + mortEndAge + (mortEndInRet ? ' <span style="font-size:10px;color:#888">(mid-retirement)</span>' : mortEndAge <= INP.ret ? ' <span style="font-size:10px;color:var(--green2)">(before retirement)</span>' : ' <span style="font-size:10px;color:#888">(after life exp.)</span>') : '<span style="color:#888;font-size:11px">Enter yrs above</span>') + '</td>' +
+      '<td>Age ' + INP.ret + ' <span style="font-size:10px;color:var(--green2)">(paid off)</span></td>' +
+      '<td style="color:var(--green2)">' + (mortEndAge && mortEndAge > INP.ret ? '–' + (mortEndAge - INP.ret) + ' yrs sooner' : mortEndAge ? 'already done' : '—') + '</td></tr>' +
+    '<tr style="background:#faf7f2"><td style="text-align:left;font-weight:600">Lump-sum payoff (from brokerage)</td><td>—</td><td style="color:var(--red)">' + (payoffBal > 0 ? '–' + fmtK(payoffBal) : '<span style="color:#888;font-size:11px">Enter balance above</span>') + '</td><td style="color:var(--red)">' + (payoffBal > 0 ? '–' + fmtK(payoffBal) : '—') + '</td></tr>' +
+    '<tr style="background:#f0ebe0"><td style="text-align:left;font-weight:600">Monthly payment</td><td>' + fmt(INP.mortgage) + '/mo</td><td>$0</td><td style="color:var(--green2);font-weight:600">–' + fmt(INP.mortgage) + '/mo</td></tr>' +
+    '<tr style="background:#faf7f2"><td style="text-align:left;font-weight:600">Payments avoided' + (mortEndInRet ? ' (until age ' + mortEndAge + ')' : '') + '</td><td>—</td><td>' + fmtK(totalSaved) + '</td><td style="color:var(--green2);font-weight:600">+' + fmtK(totalSaved) + '</td></tr>' +
+    '<tr style="background:#faf7f2"><td style="text-align:left;font-weight:600">Financial portfolio age ' + INP.life + ' <span style="font-weight:400;color:#888;font-size:11px">(excl. home)</span></td><td>' + fmtK(lastWith.totalPort) + '</td><td>' + fmtK(lastWithout.totalPort) + '</td><td style="color:' + (portDiff>=0?'var(--green2)':'var(--red)') + ';font-weight:700">' + (portDiff>=0?'+':'') + fmtK(portDiff) + '</td></tr>' +
+    '<tr style="background:#f0ebe0"><td style="text-align:left;font-weight:600">Home value age ' + INP.life + ' <span style="font-weight:400;color:#888;font-size:11px">(' + ((INP.home_apprec||0.04)*100).toFixed(1) + '%/yr)</span></td><td colspan="2" style="text-align:center">' + fmtK(homeAtLife) + '</td><td style="color:#888">same</td></tr>' +
+    '<tr style="background:#faf7f2;font-weight:700"><td style="text-align:left">Total net worth age ' + INP.life + ' <span style="font-weight:400;color:#888;font-size:11px">(portfolio + home)</span></td><td>' + fmtK(lastWith.netWorth) + '</td><td>' + fmtK(lastWithout.netWorth) + '</td><td style="color:' + (nwDiff>=0?'var(--green2)':'var(--red)') + ';font-weight:700">' + (nwDiff>=0?'+':'') + fmtK(nwDiff) + '</td></tr>' +
     '</tbody></table></div>' +
+
+    // ── Note ──
     '<div class="note" style="margin-top:8px">' +
+    '<strong>Reading this table:</strong> The financial portfolio rows show only investable accounts (401k, IRA, Roth, brokerage, HSA). ' +
+    'The home appreciates at the same rate in both scenarios — mortgage or not — so it is shown once as a shared row. ' +
+    'The <strong>Total net worth</strong> row is the apples-to-apples comparison and matches the Portfolio tab\'s Total Estate figure for the selected scenario. ' +
     (payoffBal > 0
-      ? 'The <strong>' + fmtK(payoffBal) + ' remaining balance</strong> is deducted from the brokerage account at retirement. The comparison shows the net effect: lower brokerage compounding vs. eliminating ' + fmt(INP.mortgage) + '/mo in payments. A positive portfolio difference means paying off wins over your ' + INP.life + '-year horizon.'
-      : '⚠ Enter <strong>Remaining Mortgage Balance</strong> above to model the full lump-sum impact. Without it, only the cash flow benefit (eliminated payments) is shown, which overstates the advantage.') +
+      ? 'The <strong>' + fmtK(payoffBal) + ' remaining balance</strong> is deducted from the brokerage account at retirement.'
+      : '⚠ Enter <strong>Remaining Mortgage Balance</strong> above to model the full lump-sum impact on the brokerage.') +
     '</div>';
 
   el.innerHTML = html;
@@ -2593,9 +2688,9 @@ var SCENARIO_FIELDS = [
   'i_roth_ira','i_roth_sp','i_trad_sp','i_hsa','i_hsa_c','i_brok',
   'i_growth','i_infl','i_ss_cola','i_std_ded','i_conv_tgt',
   'i_ss65','i_ss67','i_ss70','i_ss_age','i_sp_ss_age',
-  'i_living','i_mortgage','i_mortgage_bal','i_prop_tax','i_home_ins','i_medicare','i_med_infl','i_sp_ins',
+  'i_living','i_mortgage','i_mortgage_yrs','i_mortgage_rate','i_mortgage_bal','i_prop_tax','i_home_ins','i_medicare','i_med_infl','i_sp_ins',
   'i_sp_dob','i_sp_ret','i_sp_salary','i_sp_401k','i_sp_contrib','i_sp_match_rate',
-  'i_trad_sp','i_roth_sp','i_ss_taxable_pct','i_rmd_age','i_ltcg_rate','i_home_val','i_annual_gift','i_gift_age'
+  'i_trad_sp','i_roth_sp','i_ss_taxable_pct','i_rmd_age','i_ltcg_rate','i_home_val','i_home_apprec','i_annual_gift','i_gift_age'
 ];
 
 function saveScenario() {
