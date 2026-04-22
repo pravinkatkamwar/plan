@@ -58,7 +58,7 @@ window.RETIREMENT_INPUTS = {
   i_avoid_irmaa:     false,
   i_std_ded:         30000,
   i_ss_taxable_pct:  85,
-  i_rmd_age:         73,
+  i_rmd_age:         75,
   i_ltcg_rate:       15
 
 };

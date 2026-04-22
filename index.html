@@ -1213,6 +1213,14 @@ function calcAgeFromDOB() {
   }
   ageFrom('i_dob', 'i_age');
   ageFrom('i_sp_dob', 'i_sp_age');
+  // Auto-set RMD age based on birth year (SECURE 2.0 Act)
+  // Born 1960 or later → age 75 (effective 2033); born before 1960 → age 73
+  var dobEl = $('i_dob');
+  var rmdEl = $('i_rmd_age');
+  if (dobEl && dobEl.value && rmdEl) {
+    var birthYear = new Date(dobEl.value).getFullYear();
+    rmdEl.value = birthYear >= 1960 ? 75 : 73;
+  }
   runAll();
 }
 
