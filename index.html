@@ -776,13 +776,13 @@ tbody td.tax-cell  { color: var(--red); }
     <div class="input-row"><label>Avoid IRMAA (cap MAGI ≤ $206k MFJ)</label><input type="checkbox" id="i_avoid_irmaa" onchange="runAll()" style="width:auto;height:24px;margin:0"></div>
     <div class="input-row"><label>Federal Std. Deduction ($)</label><input type="number" id="i_std_ded" value="30000"></div>
     <div class="input-row"><label>SS Taxable Portion (%)</label><input type="number" id="i_ss_taxable_pct" value="85" min="0" max="100" step="1"></div>
-    <div class="input-row"><label>RMD Start Age</label><input type="number" id="i_rmd_age" value="73" min="70" max="80"></div>
+    <div class="input-row"><label>RMD Start Age</label><input type="number" id="i_rmd_age" value="75" min="70" max="80"></div>
     <div class="input-row"><label>Long-Term Cap Gains Rate (%)</label><input type="number" id="i_ltcg_rate" value="15" min="0" max="25" step="1"></div>
   </div><!-- end input-grid -->
   <div class="note" style="margin-bottom:8px">
     <strong>Target Bracket:</strong> Each year the model converts just enough Trad 401k to fill taxable income up to the selected bracket ceiling. Adjust <em>Roth Conv. Target ($)</em> to fine-tune (e.g. set lower to avoid a higher IRMAA tier). &middot;
     <strong>SS Taxable %:</strong> Up to 85% of SS is federally taxable for most retirees. &middot;
-    <strong>RMD Start Age:</strong> SECURE 2.0 sets this at 73; legislation may raise it to 75. &middot;
+    <strong>RMD Start Age:</strong> SECURE 2.0 Act: born before 1960 → age 73; born 1960 or later → age 75 (effective 2033). &middot;
     <strong>LTCG Rate:</strong> Used for reference — brokerage withdrawals are taxed at this rate on gains.
   </div>
   </div><!-- end collapsible-body: Tax & Conversion -->
