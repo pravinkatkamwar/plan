@@ -1045,7 +1045,7 @@ tbody td.tax-cell  { color: var(--red); }
 <div id="tab-advice" class="panel">
   <div class="section-title">Strategic Recommendations</div>
   <div id="advice-list" class="advice-box"></div>
-  <div class="section-title" id="state-compare-title">NJ vs Washington State Tax Impact</div>
+  <div class="section-title" id="state-compare-title">NJ vs No-Tax State Tax Impact</div>
   <div id="wa-box" class="advice-box"></div>
   <div class="section-title">IRMAA Medicare Surcharge Reference — Married Filing Jointly (2024)</div>
   <div class="tbl-wrap">
@@ -2114,7 +2114,7 @@ function renderAdvice(rows, INP) {
   var sub = $('header-subtitle');
   if (sub) sub.textContent = stateName + ' \u00B7 Planning to Age ' + INP.life;
   var cmpTitle = $('state-compare-title');
-  if (cmpTitle) cmpTitle.textContent = stateName + ' vs Washington State Tax Impact';
+  if (cmpTitle) cmpTitle.textContent = stateName + ' vs No-Tax State Tax Impact';
 
   var items = [
     ['WITHDRAWAL ORDER', INP.wd_order === 'brok_roth'
@@ -2145,9 +2145,9 @@ function renderAdvice(rows, INP) {
     [stateName + ' SS Tax', stateName === 'NJ' ? 'SS fully EXEMPT in NJ' : 'Varies — check state rules', 'No income tax'],
     [stateName === 'NJ' ? 'NJ Retirement Exclusion (MFJ 62+)' : 'Retirement Income', stateName === 'NJ' ? 'First $100k pension/IRA exempt/yr' : 'See state rules', 'No income tax'],
     ['Property Tax (house stays)','$' + INP.prop_tax.toLocaleString() + '+/yr continues','$' + INP.prop_tax.toLocaleString() + '+/yr continues'],
-    ['NET BENEFIT of Moving to WA', stateRate === 0 ? 'N/A — already no state tax' : '', stateRate === 0 ? '' : fmtK(Math.max(0, waSavings - 35000)) + ' (after ~$35k moving costs)']
+    ['NET BENEFIT of Moving to a No-Tax State', stateRate === 0 ? 'N/A — already no state tax' : '', stateRate === 0 ? '' : fmtK(Math.max(0, waSavings - 35000)) + ' (after ~$35k moving costs)']
   ];
-  var waHtml = '<div style="color:#e8c96a;font-family:Georgia,serif;font-size:14px;margin-bottom:10px">' + stateName + ' vs Washington State</div>';
+  var waHtml = '<div style="color:#e8c96a;font-family:Georgia,serif;font-size:14px;margin-bottom:10px">' + stateName + ' vs No-Tax State</div>';
   for (var i=0;i<waRows.length;i++) {
     waHtml += '<div style="display:flex;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.07)">' +
       '<div style="color:#c0cfe0;font-size:11px;flex:1.5">' + waRows[i][0] + '</div>' +
@@ -2155,7 +2155,7 @@ function renderAdvice(rows, INP) {
       '<div style="font-family:\'Courier New\',monospace;font-size:11px;color:#6fcf97;flex:1;text-align:right">' + waRows[i][2] + '</div>' +
       '</div>';
   }
-  waHtml += '<div style="margin-top:10px;font-size:10px;color:#6b85a8">NJ = left (red) &middot; WA = right (green)</div>';
+  waHtml += '<div style="margin-top:10px;font-size:10px;color:#6b85a8">' + stateName + ' = left (red) &middot; No-Tax State = right (green)</div>';
   $('wa-box').innerHTML = waHtml;
 }
 
