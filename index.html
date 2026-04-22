@@ -1086,6 +1086,11 @@ tbody td.tax-cell  { color: var(--red); }
     </div>
     <div class="chart-section" style="margin-top:0">
       <h3>Annual Retirement Expense Breakdown</h3>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <label style="color:#c0cfe0;font-size:12px">Select Age:</label>
+        <select id="expense_age_sel" onchange="renderExpenseBreakdown(window._lastRows, window._lastINP)" style="background:#1e2d45;color:#e8c96a;border:1px solid #3a5070;padding:5px 8px;border-radius:4px;font-size:13px"></select>
+        <span id="expense-infl-note" style="font-size:11px;color:#7a9ab8">inflation-adjusted</span>
+      </div>
       <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
         <div class="chart-wrap" style="width:240px;height:240px"><canvas id="chart-expense"></canvas></div>
         <div id="chart-expense-legend" style="width:100%;font-size:12px;line-height:1.9"></div>
@@ -2960,6 +2965,78 @@ function renderInflationStress(INP) {
     '<div style="font-size:11px;color:var(--muted);margin-top:6px">★ = your current inflation setting · Higher inflation increases expenses faster than SS COLA covers, drawing down portfolio sooner.</div>';
 }
 
+// ── Expense Breakdown donut (standalone — called by dropdown too) ──
+function renderExpenseBreakdown(rows, INP) {
+  if (!rows || !INP) return;
+  window._lastRows = rows; window._lastINP = INP;
+
+  var sel = $('expense_age_sel');
+  var retRows = rows.filter(function(r){ return !r.isWorking && !r.isSeed; });
+  if (!retRows.length) return;
+
+  // Determine selected age; default to first retirement year
+  var selAge = sel && sel.value ? parseInt(sel.value) : retRows[0].age;
+  var r = retRows.find(function(x){ return x.age === selAge; }) || retRows[0];
+
+  // Build expense items from actual projected row values
+  var items = [
+    { label: 'Living Expenses',       val: r.living,                        color: '#2563eb' },
+    { label: 'Mortgage',              val: r.housing,                       color: '#7c3aed' },
+    { label: 'Prop Tax & Insurance',  val: r.propIns,                       color: '#db2777' },
+    { label: 'Medicare (you)',         val: r.medicareYr,                    color: '#16a34a' },
+    { label: 'Medicare (spouse)',      val: r.spMedicareYr || 0,             color: '#0d9488' },
+    { label: 'Spouse Insurance',       val: r.spIns || 0,                    color: '#0891b2' }
+  ].filter(function(d){ return d.val > 0; });
+
+  var total = items.reduce(function(s, d){ return s + d.val; }, 0);
+
+  destroyChart('expense');
+  var ctx = document.getElementById('chart-expense');
+  if (!ctx) return;
+
+  window._charts['expense'] = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: items.map(function(d){ return d.label; }),
+      datasets: [{ data: items.map(function(d){ return d.val; }),
+        backgroundColor: items.map(function(d){ return d.color; }),
+        borderWidth: 2, borderColor: '#fff', hoverOffset: 6 }]
+    },
+    options: {
+      cutout: '62%', responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              var v = ctx.parsed;
+              var pct = total > 0 ? (v / total * 100).toFixed(1) : 0;
+              return ' $' + Math.round(v).toLocaleString() + '  (' + pct + '%)';
+            }
+          }
+        }
+      }
+    }
+  });
+
+  // Custom legend + total
+  var leg = $('chart-expense-legend');
+  if (leg) {
+    leg.innerHTML = items.map(function(d){
+      var pct = total > 0 ? (d.val / total * 100).toFixed(1) : 0;
+      return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">' +
+        '<span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:' + d.color + ';flex-shrink:0"></span>' +
+        '<span style="color:#374151">' + d.label + '</span>' +
+        '<span style="margin-left:auto;font-weight:600;color:#0f2240">$' + Math.round(d.val).toLocaleString() + '</span>' +
+        '<span style="color:#6b7280;min-width:38px;text-align:right">' + pct + '%</span>' +
+        '</div>';
+    }).join('') +
+    '<div style="border-top:1px solid #e5e7eb;margin-top:8px;padding-top:6px;display:flex;justify-content:space-between;font-weight:700;color:#0f2240">' +
+      '<span>Total</span><span>$' + Math.round(total).toLocaleString() + '/yr</span>' +
+    '</div>';
+  }
+}
+
 // ── Chart instances store ──────────────────────────────────────
 window._charts = {};
 
@@ -2970,62 +3047,19 @@ function destroyChart(id) {
 function renderCharts(rows, INP) {
   if (typeof Chart === 'undefined') return; // Chart.js not loaded yet
 
-  // ── 1. EXPENSE BREAKDOWN — donut chart in Inputs tab ─────────
+  // ── 1. EXPENSE BREAKDOWN — donut chart (dynamic by age) ──────
   (function() {
-    destroyChart('expense');
-    var infl = 1; // show retirement-start values (real dollars)
-    var items = [
-      { label: 'Living Expenses',    val: INP.living * 12,   color: '#2563eb' },
-      { label: 'Mortgage',           val: INP.mortgage * 12, color: '#7c3aed' },
-      { label: 'Property Tax',       val: INP.prop_tax,      color: '#db2777' },
-      { label: 'Home Insurance',     val: INP.home_ins,      color: '#ea580c' },
-      { label: 'Medicare (member)',  val: INP.medicare * 12, color: '#16a34a' },
-      { label: 'Wife Insurance',     val: INP.sp_ins * 12,   color: '#0891b2' }
-    ].filter(function(d){ return d.val > 0; });
-
-    var total = items.reduce(function(s,d){ return s+d.val; }, 0);
-    var ctx = document.getElementById('chart-expense');
-    if (!ctx) return;
-    window._charts['expense'] = new Chart(ctx, {
-      type: 'doughnut',
-      data: {
-        labels: items.map(function(d){ return d.label; }),
-        datasets: [{ data: items.map(function(d){ return d.val; }),
-          backgroundColor: items.map(function(d){ return d.color; }),
-          borderWidth: 2, borderColor: '#fff', hoverOffset: 6 }]
-      },
-      options: {
-        cutout: '62%', responsive: true,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: function(ctx) {
-                var v = ctx.parsed;
-                var pct = total > 0 ? (v/total*100).toFixed(1) : 0;
-                return ' $' + Math.round(v).toLocaleString() + '  (' + pct + '%)';
-              }
-            }
-          }
-        }
-      }
-    });
-    // Custom legend
-    var leg = document.getElementById('chart-expense-legend');
-    if (leg) {
-      leg.innerHTML = items.map(function(d){
-        var pct = total > 0 ? (d.val/total*100).toFixed(1) : 0;
-        return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">' +
-          '<span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:' + d.color + ';flex-shrink:0"></span>' +
-          '<span style="color:#374151">' + d.label + '</span>' +
-          '<span style="margin-left:auto;font-weight:600;color:#0f2240">$' + Math.round(d.val).toLocaleString() + '</span>' +
-          '<span style="color:#6b7280;min-width:38px;text-align:right">' + pct + '%</span>' +
-          '</div>';
-      }).join('') +
-      '<div style="border-top:1px solid #e5e7eb;margin-top:8px;padding-top:6px;font-weight:700;color:#0f2240">' +
-        'Total: $' + Math.round(total).toLocaleString() + '/yr' +
-      '</div>';
+    var sel = $('expense_age_sel');
+    if (sel) {
+      sel.innerHTML = '';
+      var retRows = rows.filter(function(r){ return !r.isWorking && !r.isSeed; });
+      retRows.forEach(function(r) {
+        var o = document.createElement('option');
+        o.value = r.age; o.textContent = 'Age ' + r.age;
+        sel.appendChild(o);
+      });
     }
+    renderExpenseBreakdown(rows, INP);
   })();
 
   // ── 2. ROTH CONVERSION — bar + line chart in Roth tab ────────
