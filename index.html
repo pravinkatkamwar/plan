@@ -2160,7 +2160,7 @@ function renderAdvice(rows, INP) {
     ['WITHDRAWAL ORDER', INP.wd_order === 'brok_roth'
       ? '1) Trad 401k/IRA first  2) Brokerage  3) Roth IRA last (preserve for heirs)  4) SS offsets gap  5) HSA for your Medicare (tax-free)'
       : '1) Trad 401k/IRA first  2) Roth IRA  3) Brokerage last  4) SS offsets gap  5) HSA for your Medicare (tax-free)','&#x1F3C6;'],
-    ['ROTH CONVERSION STRATEGY','Convert Trad 401k during ages ' + Math.max(INP.age,INP.ret) + '–' + (INP.rmd_age-1) + ' before RMDs. Model converts ' + fmtK(totalConv) + ' total, est. ' + fmtK(totalTax) + ' in federal taxes. Target: top of ' + (BRACKET_CEILINGS[$("i_target_bracket") ? $("i_target_bracket").value : "201050"] || 22) + '% bracket (' + fmt(INP.conv_tgt) + ').','&#x1F504;'],
+    ['ROTH CONVERSION STRATEGY','Convert Trad 401k during ages ' + Math.max(INP.age,INP.ret) + '–' + (INP.rmd_age-1) + ' before RMDs. Model converts ' + fmtK(totalConv) + ' total, est. ' + fmtK(totalTax) + ' in federal taxes. Target: top of ' + (BRACKET_CEILINGS[String(Math.round(INP.conv_tgt))] || 22) + '% bracket (' + fmt(INP.conv_tgt) + ').','&#x1F504;'],
     ['SOCIAL SECURITY - WAIT TO 70','Every year you delay past 67 adds ~8% permanently. Wife receives your higher benefit as survivor - critical since she is younger.','&#x1F3DB;'],
     ['RMDs BEGIN AT AGE ' + INP.rmd_age,'SECURE 2.0 Act: RMDs start at ' + INP.rmd_age + '. You have ' + Math.max(0,INP.rmd_age - Math.max(INP.age,INP.ret)) + ' years (ages ' + Math.max(INP.age,INP.ret) + '–' + (INP.rmd_age-1) + ') to convert to Roth before RMDs force taxable withdrawals.','&#x1F4CB;'],
     ['HSA STRATEGY','HSA covers your Medicare Part B + IRMAA surcharges only (IRS-qualified, tax-free). Wife Medicare Part B is paid from regular withdrawals — not HSA-eligible on a separate account. Do NOT use HSA for spouse private insurance either.','&#x1F3E5;'],
@@ -3632,7 +3632,9 @@ function updateHeader(name, isOwner) {
   if (sub) {
     const state = document.getElementById('i_state');
     const stateVal = state ? state.value : 'NJ';
-    sub.textContent = (name || 'Guest') + ' \u00B7 ' + stateVal + ' \u00B7 Planning to Age 85';
+    const lifeEl = document.getElementById('i_life');
+    const lifeAge = lifeEl ? lifeEl.value : '85';
+    sub.textContent = (name || 'Guest') + ' \u00B7 ' + stateVal + ' \u00B7 Planning to Age ' + lifeAge;
   }
   // Mode badge
   const badge = document.getElementById('mode-badge');
