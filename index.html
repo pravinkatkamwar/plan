@@ -694,15 +694,18 @@ tbody td.tax-cell  { color: var(--red); }
         <option value="WY">WY – Wyoming (0%)</option>
       </select>
     </div>
-    <div class="input-row"><label>Current Salary ($)</label><input type="number" id="i_salary" value="200000"></div>
+    <div class="input-row" id="row-salary"><label>Current Salary ($)</label><input type="number" id="i_salary" value="200000"></div>
     <div class="input-row"><label>Trad. 401k Balance ($)</label><input type="number" id="i_trad401k" value="1750000"></div>
     <div class="input-row"><label>Roth 401k Balance ($)</label><input type="number" id="i_roth401k" value="200000"></div>
-    <div class="input-row"><label>Your 401k Contribution ($)</label><input type="number" id="i_contrib" value="37500"></div>
-    <div class="input-row"><label>Company Match Rate (%)</label><input type="number" id="i_match" value="5"></div>
+    <div class="input-row" id="row-contrib"><label>Your 401k Contribution ($)</label><input type="number" id="i_contrib" value="37500"></div>
+    <div class="input-row" id="row-match"><label>Company Match Rate (%)</label><input type="number" id="i_match" value="5"></div>
     <div class="input-row"><label>Roth IRA - Your ($)</label><input type="number" id="i_roth_ira" value="120000"></div>
     <div class="input-row"><label>HSA Balance ($)</label><input type="number" id="i_hsa" value="107000"></div>
-    <div class="input-row"><label>HSA 2025 Contribution ($)</label><input type="number" id="i_hsa_c" value="8000"></div>
+    <div class="input-row" id="row-hsa-c"><label>HSA 2025 Contribution ($)</label><input type="number" id="i_hsa_c" value="8000"></div>
     <div class="input-row"><label>Brokerage Account ($)</label><input type="number" id="i_brok" value="1000000"></div>
+    <div id="retired-note" style="display:none;grid-column:1/-1;background:#1a3a2a;border:1px solid #2d6a4f;border-radius:6px;padding:8px 12px;font-size:12px;color:#6dd68a">
+      ✅ <strong>Already Retired</strong> — Salary, 401k contributions, match, and HSA contributions are not applicable and are excluded from projections.
+    </div>
   </div><!-- end input-grid -->
   </div><!-- end collapsible-body: Your Details -->
 
@@ -890,7 +893,7 @@ tbody td.tax-cell  { color: var(--red); }
 <div id="tab-portfolio" class="panel">
   <div id="pg-summary" class="cards"></div>
 
-  <div class="section-title">Pre-Retirement Accumulation (Working Years)</div>
+  <div class="section-title" id="pg-accum-title">Pre-Retirement Accumulation (Working Years)</div>
   <div id="pg-accum-summary" class="cards" style="margin-bottom:10px"></div>
   <div class="tbl-wrap" id="pg-accum-wrap">
     <table style="min-width:700px">
@@ -1226,6 +1229,15 @@ function calcAgeFromDOB() {
     var birthYear = new Date(dobEl.value).getFullYear();
     rmdEl.value = birthYear >= 1960 ? 75 : 73;
   }
+  // Show/hide working-year inputs based on whether already retired
+  var ageNow  = parseFloat(($('i_age')  || {}).value) || 0;
+  var retAge  = parseFloat(($('i_ret')  || {}).value) || 65;
+  var retired = ageNow >= retAge;
+  ['row-salary','row-contrib','row-match','row-hsa-c'].forEach(function(id) {
+    var el = $(id); if (el) el.style.display = retired ? 'none' : '';
+  });
+  var retiredNote = $('retired-note');
+  if (retiredNote) retiredNote.style.display = retired ? '' : 'none';
   runAll();
 }
 
@@ -1362,19 +1374,26 @@ function calc(overrides) {
   var sp_ss_monthly = sp_ss_pia_mo * (1 - sp_reduction);
   var sp_ss_yr      = sp_ss_monthly * 12;
 
+  // Whether the person is already retired at model start
+  var alreadyRetired = INP.age >= INP.ret;
+
   // Spouse working status at model start
   var spWorking0  = INP.sp_salary > 0 && INP.sp_age < INP.sp_ret;
   var spContrib0  = spWorking0 ? (INP.sp_contrib + INP.sp_salary * INP.sp_match) : 0;
 
-  // Seed balances: apply one year of growth+contributions to represent end of current year
+  // Seed balances: apply one year of growth (+ contributions only if still working)
   // (loop starts at age+1, so first row shown is already one year ahead)
-  var trad   = (INP.trad401k + INP.contrib + INP.salary * INP.match) * (1 + INP.growth);
+  var trad   = alreadyRetired
+    ? INP.trad401k * (1 + INP.growth)
+    : (INP.trad401k + INP.contrib + INP.salary * INP.match) * (1 + INP.growth);
   var roth   = (INP.roth401k + INP.roth_ira) * (1 + INP.growth);
   var rothSp = INP.roth_sp * (1 + INP.growth);
   var tradSp = (INP.trad_sp + INP.sp_401k + spContrib0) * (1 + INP.growth);
-  var hsa    = (INP.hsa + INP.hsa_c) * (1 + INP.growth);
+  var hsa    = alreadyRetired
+    ? INP.hsa * (1 + INP.growth)
+    : (INP.hsa + INP.hsa_c) * (1 + INP.growth);
   var brok   = INP.brok * (1 + INP.growth);
-  var magiQ    = [INP.salary + INP.sp_salary, INP.salary + INP.sp_salary];
+  var magiQ  = [INP.salary + INP.sp_salary, INP.salary + INP.sp_salary];
 
   var rows = [];
   var numYears = INP.life - INP.age; // dynamic: from current age to life expectancy
@@ -1386,7 +1405,7 @@ function calc(overrides) {
   var seedHSA = INP.hsa, seedBrok = INP.brok;
   var seedTotal = seedTrad + seedRoth + seedRothSp + seedTradSp + seedHSA + seedBrok;
   rows.push({
-    age: INP.age, isRMD: false, isWorking: true, isSeed: true,
+    age: INP.age, isRMD: false, isWorking: !alreadyRetired, isSeed: true,
     tradStart: seedTrad, tradEnd: seedTrad, tradBal: seedTrad,
     rothBal: seedRoth, rothSpBal: seedRothSp, tradSpBal: seedTradSp,
     hsaBal: seedHSA, brokBal: seedBrok, totalPort: seedTotal,
@@ -1634,10 +1653,11 @@ function renderRoth(rows, INP) {
   var finalBal = rows[rows.length-1].tradEnd;
   var firstRetRow = rows.find(function(r){ return !r.isWorking; });
   var lastRetAge  = rows.filter(function(r){ return !r.isWorking && !r.isRMD; });
-  var convAgeRange = firstRetRow ? firstRetRow.age + '–' + (INP.rmd_age - 1) : '–';
+  var convStartAge = Math.max(INP.age, INP.ret);
+  var convAgeRange = convStartAge + '–' + (INP.rmd_age - 1);
   var bracketSel = $('i_target_bracket');
   var bracketPct = bracketSel ? (BRACKET_CEILINGS[bracketSel.value] || 22) : 22;
-  var convYears = INP.rmd_age - 64;
+  var convYears = Math.max(0, INP.rmd_age - convStartAge);
   var rmdNote = $('roth-note');
   if (rmdNote) rmdNote.innerHTML = 'Green = conversion amount &middot; Orange rows = RMD age ' + INP.rmd_age + '+ (conversions stop) &middot; Target: top of ' + bracketPct + '% bracket (' + fmt(INP.conv_tgt) + ') &middot; SS taxable: ' + Math.round(INP.ss_taxable_pct*100) + '%';
 
@@ -1793,60 +1813,75 @@ function renderWithdrawal(rows, INP) {
 
 function renderPortfolio(rows, INP) {
   var last = rows[rows.length-1];
+  var alreadyRetired = INP.age >= INP.ret;
   var workRows  = rows.filter(function(r){ return r.isWorking; });
   var seedRow   = rows.find(function(r){ return r.isSeed; });
   var firstRetRow = rows.find(function(r){ return !r.isWorking; });
 
-  // ── Pre-retirement summary cards ────────────────────────────────────────
-  var totalContribAdded = 0, totalMatchAdded = 0, totalHSAAdded = 0;
-  for (var i=0;i<workRows.length;i++) {
-    if (workRows[i].isSeed) continue;
-    totalContribAdded += workRows[i].yourContrib || 0;
-    totalMatchAdded   += workRows[i].matchAmt || 0;
-    totalHSAAdded     += workRows[i].hsaContrib || 0;
-  }
-  var portAtRetirement = firstRetRow ? firstRetRow.totalPort : 0;
-  var portToday = seedRow ? seedRow.totalPort : 0;
-  var accumGain = portAtRetirement - portToday;
+  // ── Pre-retirement section: hide if already retired ─────────────────────
+  var accumTitle = $('pg-accum-title');
+  var accumWrap  = $('pg-accum-wrap');
+  if (alreadyRetired) {
+    if (accumTitle) accumTitle.textContent = 'Currently Retired — No Pre-Retirement Phase';
+    if (accumWrap)  accumWrap.style.display = 'none';
+    $('pg-accum-summary').innerHTML =
+      '<div class="card green"><div class="card-label">Portfolio Today (Age ' + INP.age + ')</div><div class="card-value">' + fmtK(seedRow ? seedRow.totalPort : 0) + '</div><div class="card-sub">All accounts — already in retirement</div></div>' +
+      '<div class="card gold"><div class="card-label">Retired Since Age</div><div class="card-value">' + INP.ret + '</div><div class="card-sub">No more contributions</div></div>';
+  } else {
+    if (accumTitle) accumTitle.textContent = 'Pre-Retirement Accumulation (Working Years)';
+    if (accumWrap)  accumWrap.style.display = '';
 
-  $('pg-accum-summary').innerHTML =
-    '<div class="card green"><div class="card-label">Portfolio at Retirement</div><div class="card-value">' + fmtK(portAtRetirement) + '</div><div class="card-sub">Starting balance for withdrawals</div></div>' +
-    '<div class="card gold"><div class="card-label">Your 401k Contributions</div><div class="card-value">' + fmtK(totalContribAdded) + '</div><div class="card-sub">Pre-tax, working years</div></div>' +
-    '<div class="card gold"><div class="card-label">Company Match Added</div><div class="card-value">' + fmtK(totalMatchAdded) + '</div><div class="card-sub">Free money (' + (INP.match*100).toFixed(0) + '% of salary)</div></div>' +
-    '<div class="card green"><div class="card-label">Total Gain (growth + contrib)</div><div class="card-value">' + fmtK(accumGain) + '</div><div class="card-sub">vs today&#39;s balances</div></div>';
-
-  // ── Pre-retirement accumulation table ───────────────────────────────────
-  var accumTbody = $('pg-accum-body');
-  if (accumTbody) {
-    accumTbody.innerHTML = '';
+    // ── Pre-retirement summary cards ──────────────────────────────────────
+    var totalContribAdded = 0, totalMatchAdded = 0, totalHSAAdded = 0;
     for (var i=0;i<workRows.length;i++) {
-      var r = workRows[i];
-      var tr = document.createElement('tr');
-      tr.className = r.isSeed ? '' : 'working-row';
-      var statusLabel = r.isSeed ? '<span style="color:var(--navy);font-weight:700">Today</span>' : '<span style="color:#3a6aad;font-weight:600">Working</span>';
-      var prevPort = i === 0 ? 0 : workRows[i-1].totalPort;
-      var growthAmt = r.isSeed ? 0 : Math.round(r.totalPort - prevPort - (r.yourContrib||0) - (r.matchAmt||0) - (r.hsaContrib||0));
-      tr.innerHTML =
-        '<td style="font-weight:700;color:var(--navy)">' + r.age + (r.isSeed ? ' ★' : '') + '</td>' +
-        '<td>' + statusLabel + '</td>' +
-        '<td style="color:var(--navy2);font-weight:600">' + (r.isSeed ? '—' : fmt(r.yourContrib)) + '</td>' +
-        '<td style="color:var(--green2);font-weight:600">' + (r.isSeed ? '—' : fmt(r.matchAmt)) + '</td>' +
-        '<td style="color:var(--navy2);font-weight:600">' + (r.isSeed ? '—' : fmt(r.hsaContrib)) + '</td>' +
-        '<td style="font-weight:700;color:var(--navy)">' + (r.isSeed ? '—' : fmt((r.yourContrib||0)+(r.matchAmt||0)+(r.hsaContrib||0))) + '</td>' +
-        '<td style="color:var(--green);font-weight:600">' + (r.isSeed ? '—' : fmt(growthAmt)) + '</td>' +
-        '<td><strong>' + fmt(r.totalPort) + '</strong></td>' +
-        '<td>' + fmt(r.netWorth) + '</td>';
-      accumTbody.appendChild(tr);
+      if (workRows[i].isSeed) continue;
+      totalContribAdded += workRows[i].yourContrib || 0;
+      totalMatchAdded   += workRows[i].matchAmt || 0;
+      totalHSAAdded     += workRows[i].hsaContrib || 0;
     }
-    // Add a retirement-start separator row
-    if (firstRetRow) {
-      var sepTr = document.createElement('tr');
-      sepTr.style.background = '#e8f4ee';
-      sepTr.innerHTML = '<td style="font-weight:700;color:var(--green)">Age ' + firstRetRow.age + '</td>' +
-        '<td colspan="6" style="text-align:left;font-style:italic;color:var(--green);font-weight:600">↓ Retirement begins — withdrawals start</td>' +
-        '<td style="font-weight:700;color:var(--green)">' + fmt(firstRetRow.totalPort) + '</td>' +
-        '<td>' + fmt(firstRetRow.netWorth) + '</td>';
-      accumTbody.appendChild(sepTr);
+    var portAtRetirement = firstRetRow ? firstRetRow.totalPort : 0;
+    var portToday = seedRow ? seedRow.totalPort : 0;
+    var accumGain = portAtRetirement - portToday;
+
+    $('pg-accum-summary').innerHTML =
+      '<div class="card green"><div class="card-label">Portfolio at Retirement</div><div class="card-value">' + fmtK(portAtRetirement) + '</div><div class="card-sub">Starting balance for withdrawals</div></div>' +
+      '<div class="card gold"><div class="card-label">Your 401k Contributions</div><div class="card-value">' + fmtK(totalContribAdded) + '</div><div class="card-sub">Pre-tax, working years</div></div>' +
+      '<div class="card gold"><div class="card-label">Company Match Added</div><div class="card-value">' + fmtK(totalMatchAdded) + '</div><div class="card-sub">Free money (' + (INP.match*100).toFixed(0) + '% of salary)</div></div>' +
+      '<div class="card green"><div class="card-label">Total Gain (growth + contrib)</div><div class="card-value">' + fmtK(accumGain) + '</div><div class="card-sub">vs today&#39;s balances</div></div>';
+
+    // ── Pre-retirement accumulation table ─────────────────────────────────
+    var accumTbody = $('pg-accum-body');
+    if (accumTbody) {
+      accumTbody.innerHTML = '';
+      for (var i=0;i<workRows.length;i++) {
+        var r = workRows[i];
+        var tr = document.createElement('tr');
+        tr.className = r.isSeed ? '' : 'working-row';
+        var statusLabel = r.isSeed ? '<span style="color:var(--navy);font-weight:700">Today</span>' : '<span style="color:#3a6aad;font-weight:600">Working</span>';
+        var prevPort = i === 0 ? 0 : workRows[i-1].totalPort;
+        var growthAmt = r.isSeed ? 0 : Math.round(r.totalPort - prevPort - (r.yourContrib||0) - (r.matchAmt||0) - (r.hsaContrib||0));
+        tr.innerHTML =
+          '<td style="font-weight:700;color:var(--navy)">' + r.age + (r.isSeed ? ' ★' : '') + '</td>' +
+          '<td>' + statusLabel + '</td>' +
+          '<td style="color:var(--navy2);font-weight:600">' + (r.isSeed ? '—' : fmt(r.yourContrib)) + '</td>' +
+          '<td style="color:var(--green2);font-weight:600">' + (r.isSeed ? '—' : fmt(r.matchAmt)) + '</td>' +
+          '<td style="color:var(--navy2);font-weight:600">' + (r.isSeed ? '—' : fmt(r.hsaContrib)) + '</td>' +
+          '<td style="font-weight:700;color:var(--navy)">' + (r.isSeed ? '—' : fmt((r.yourContrib||0)+(r.matchAmt||0)+(r.hsaContrib||0))) + '</td>' +
+          '<td style="color:var(--green);font-weight:600">' + (r.isSeed ? '—' : fmt(growthAmt)) + '</td>' +
+          '<td><strong>' + fmt(r.totalPort) + '</strong></td>' +
+          '<td>' + fmt(r.netWorth) + '</td>';
+        accumTbody.appendChild(tr);
+      }
+      // Add a retirement-start separator row
+      if (firstRetRow) {
+        var sepTr = document.createElement('tr');
+        sepTr.style.background = '#e8f4ee';
+        sepTr.innerHTML = '<td style="font-weight:700;color:var(--green)">Age ' + firstRetRow.age + '</td>' +
+          '<td colspan="6" style="text-align:left;font-style:italic;color:var(--green);font-weight:600">↓ Retirement begins — withdrawals start</td>' +
+          '<td style="font-weight:700;color:var(--green)">' + fmt(firstRetRow.totalPort) + '</td>' +
+          '<td>' + fmt(firstRetRow.netWorth) + '</td>';
+        accumTbody.appendChild(sepTr);
+      }
     }
   }
 
@@ -2125,9 +2160,9 @@ function renderAdvice(rows, INP) {
     ['WITHDRAWAL ORDER', INP.wd_order === 'brok_roth'
       ? '1) Trad 401k/IRA first  2) Brokerage  3) Roth IRA last (preserve for heirs)  4) SS offsets gap  5) HSA for your Medicare (tax-free)'
       : '1) Trad 401k/IRA first  2) Roth IRA  3) Brokerage last  4) SS offsets gap  5) HSA for your Medicare (tax-free)','&#x1F3C6;'],
-    ['ROTH CONVERSION STRATEGY','Convert Trad 401k during ages 64–' + (INP.rmd_age-1) + ' before RMDs. Model converts ' + fmtK(totalConv) + ' total, est. ' + fmtK(totalTax) + ' in federal taxes. Target: top of ' + (BRACKET_CEILINGS[$("i_target_bracket") ? $("i_target_bracket").value : "201050"] || 22) + '% bracket (' + fmt(INP.conv_tgt) + ').','&#x1F504;'],
+    ['ROTH CONVERSION STRATEGY','Convert Trad 401k during ages ' + Math.max(INP.age,INP.ret) + '–' + (INP.rmd_age-1) + ' before RMDs. Model converts ' + fmtK(totalConv) + ' total, est. ' + fmtK(totalTax) + ' in federal taxes. Target: top of ' + (BRACKET_CEILINGS[$("i_target_bracket") ? $("i_target_bracket").value : "201050"] || 22) + '% bracket (' + fmt(INP.conv_tgt) + ').','&#x1F504;'],
     ['SOCIAL SECURITY - WAIT TO 70','Every year you delay past 67 adds ~8% permanently. Wife receives your higher benefit as survivor - critical since she is younger.','&#x1F3DB;'],
-    ['RMDs BEGIN AT AGE ' + INP.rmd_age,'SECURE 2.0 Act: RMDs start at ' + INP.rmd_age + '. You have ' + (INP.rmd_age - 64) + ' years (ages 64–' + (INP.rmd_age-1) + ') to convert to Roth before RMDs force taxable withdrawals.','&#x1F4CB;'],
+    ['RMDs BEGIN AT AGE ' + INP.rmd_age,'SECURE 2.0 Act: RMDs start at ' + INP.rmd_age + '. You have ' + Math.max(0,INP.rmd_age - Math.max(INP.age,INP.ret)) + ' years (ages ' + Math.max(INP.age,INP.ret) + '–' + (INP.rmd_age-1) + ') to convert to Roth before RMDs force taxable withdrawals.','&#x1F4CB;'],
     ['HSA STRATEGY','HSA covers your Medicare Part B + IRMAA surcharges only (IRS-qualified, tax-free). Wife Medicare Part B is paid from regular withdrawals — not HSA-eligible on a separate account. Do NOT use HSA for spouse private insurance either.','&#x1F3E5;'],
     ['IRMAA WARNING','Roth conversion income (~$201k/yr) triggers IRMAA surcharges. Prior salary of $' + INP.salary.toLocaleString() + ' also affects ages 65-66 surcharges.','&#x26A0;'],
     ['ESTATE PLANNING','Roth accounts pass tax-free to your children (10-year rule). Every dollar converted now becomes a tax-free inheritance. Minimize Trad 401k balance by age 85.' + (INP.annual_gift > 0 ? ' Annual gift of ' + fmt(INP.annual_gift) + ' modeled from age ' + INP.gift_age + ' — reduces brokerage each year.' : '') + '','&#x1F46A;'],
@@ -2827,7 +2862,7 @@ function printSummary() {
   '<div class="card"><div class="card-label">Portfolio at Age ' + INP.life + '</div><div class="card-value">$' + Math.round(last.totalPort/1000) + 'k</div><div class="card-sub">All accounts combined</div></div>' +
   '<div class="card"><div class="card-label">Roth at Age ' + INP.life + '</div><div class="card-value" style="color:#2d6a4f">$' + Math.round((last.rothBal+last.rothSpBal)/1000) + 'k</div><div class="card-sub">Tax-free to heirs</div></div>' +
   '<div class="card"><div class="card-label">Net Worth at ' + INP.life + '</div><div class="card-value">$' + Math.round(last.netWorth/1000) + 'k</div><div class="card-sub">Incl. home</div></div>' +
-  '<div class="card"><div class="card-label">Total Converted</div><div class="card-value">$' + Math.round(totalConv/1000) + 'k</div><div class="card-sub">Trad → Roth, ages 65–' + (INP.rmd_age-1) + '</div></div>' +
+  '<div class="card"><div class="card-label">Total Converted</div><div class="card-value">$' + Math.round(totalConv/1000) + 'k</div><div class="card-sub">Trad → Roth, ages ' + Math.max(INP.age,INP.ret) + '–' + (INP.rmd_age-1) + '</div></div>' +
   '</div>' +
 
   '<div class="grid">' +
