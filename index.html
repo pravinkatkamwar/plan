@@ -1412,7 +1412,7 @@ function calc(overrides) {
     homeVal: INP.home_val || 650000,
     netWorth: seedTotal + (INP.home_val || 650000),
     yourContrib: 0, matchAmt: 0, hsaContrib: 0, totalContrib: 0, portGrowthAmt: 0,
-    ss: 0, ss_taxable: 0, conv: 0, totalTaxable: INP.salary, ft: 0, effRate: 0,
+    ss: 0, ss_taxable: 0, conv: 0, totalTaxable: alreadyRetired ? 0 : INP.salary, ft: 0, effRate: 0,
     living: 0, housing: 0, propIns: 0, spIns: 0, medicareYr: 0, spMedicareYr: 0,
     totalNeeds: 0, ss_income: 0, sp_ss: 0, totalSS: 0,
     brokDraw: 0, rothDraw: 0, tradDraw: 0, hsaPay: 0, irmaaYr: 0, surplus: 0,
@@ -1651,8 +1651,8 @@ function renderRoth(rows, INP) {
   var totalConv = 0, totalTax = 0;
   for (var i = 0; i < rows.length; i++) { totalConv += rows[i].conv; totalTax += rows[i].ft; }
   var finalBal = rows[rows.length-1].tradEnd;
-  var firstRetRow = rows.find(function(r){ return !r.isWorking; });
-  var lastRetAge  = rows.filter(function(r){ return !r.isWorking && !r.isRMD; });
+  var firstRetRow = rows.find(function(r){ return !r.isWorking && !r.isSeed; });
+  var lastRetAge  = rows.filter(function(r){ return !r.isWorking && !r.isRMD && !r.isSeed; });
   var convStartAge = Math.max(INP.age, INP.ret);
   var convAgeRange = convStartAge + '–' + (INP.rmd_age - 1);
   var bracketSel = $('i_target_bracket');
@@ -1672,6 +1672,7 @@ function renderRoth(rows, INP) {
   var tC = 0, tT = 0;
   for (var i = 0; i < rows.length; i++) {
     var r = rows[i];
+    if (r.isSeed && !r.isWorking) continue; // skip seed row when already retired
     tC += r.conv; tT += r.ft;
     var tr = document.createElement('tr');
     if (r.isWorking)   tr.className = 'working-row';
@@ -1744,11 +1745,12 @@ function renderWithdrawal(rows, INP) {
     '<div class="card gold"><div class="card-label">Total Fed Taxes</div><div class="card-value">' + fmtK(tTax) + '</div><div class="card-sub">On taxable income</div></div>' +
     '<div class="card gold"><div class="card-label">Total All Taxes</div><div class="card-value">' + fmtK(tTax + tStateTax) + '</div><div class="card-sub">Fed + ' + stateLabel + ' combined</div></div>';
 
-  var retRows = rows.filter(function(r){ return !r.isWorking; });
+  var retRows = rows.filter(function(r){ return !r.isWorking && !r.isSeed; });
   var tbody = $('wd-body');
   tbody.innerHTML = '';
   for (var i=0;i<rows.length;i++) {
     var r = rows[i];
+    if (r.isSeed && !r.isWorking) continue; // skip seed row when already retired
     var tr = document.createElement('tr');
     if (r.isWorking)  tr.className = 'working-row';
     else if (r.isRMD) tr.className = 'rmd-row';
@@ -2241,7 +2243,7 @@ function renderTaxProj(rows, INP) {
   var sel = $('tax_age_sel');
   // Populate selector if empty
   if (sel && sel.options.length === 0) {
-    var retRows = rows.filter(function(r){ return !r.isWorking; });
+    var retRows = rows.filter(function(r){ return !r.isWorking && !r.isSeed; });
     for (var i = 0; i < retRows.length; i++) {
       var o = document.createElement('option');
       o.value = retRows[i].age; o.textContent = 'Age ' + retRows[i].age;
@@ -2249,7 +2251,7 @@ function renderTaxProj(rows, INP) {
     }
   }
   var selAge = sel ? parseInt(sel.value) : (INP.rmd_age);
-  var r = rows.find(function(x){ return x.age === selAge && !x.isWorking; });
+  var r = rows.find(function(x){ return x.age === selAge && !x.isWorking && !x.isSeed; });
   if (!r) { $('taxproj-content').innerHTML = '<div class="note">No data for selected age.</div>'; return; }
 
   var agi = r.ss_income + r.sp_ss + r.conv + r.tradDraw;
@@ -2322,9 +2324,12 @@ function renderTaxProj(rows, INP) {
 
 // ── MONTE CARLO TAB ───────────────────────────────────────────────────────────
 function renderMonteCarlo(rows, INP) {
-  var N = 500, retRows = rows.filter(function(r){ return !r.isWorking; });
+  var N = 500, retRows = rows.filter(function(r){ return !r.isWorking && !r.isSeed; });
   if (!retRows.length) return;
   var results = [];  // results[sim] = array of portfolio values by age
+  // Use seed row's totalPort as starting balance (current balance before any modeled growth)
+  var mcSeedRow = rows.find(function(r){ return r.isSeed; });
+  var mcStartPort = mcSeedRow ? mcSeedRow.totalPort : retRows[0].totalPort;
 
   // Box-Muller normal random
   function randn(mean, std) {
@@ -2335,7 +2340,7 @@ function renderMonteCarlo(rows, INP) {
   }
 
   for (var sim = 0; sim < N; sim++) {
-    var port = retRows[0].totalPort;
+    var port = mcStartPort;
     var simVals = [];
     for (var j = 0; j < retRows.length; j++) {
       var r = retRows[j];
@@ -2420,11 +2425,12 @@ function renderSurvivor(rows, INP) {
     return 183647 + (t - 609350) * 0.37;
   }
 
-  var retRows = rows.filter(function(r){ return !r.isWorking; });
+  var retRows = rows.filter(function(r){ return !r.isWorking && !r.isSeed; });
   var tbody = '', tPorts = [], tTax = 0;
-  var trad = retRows[0] ? retRows[0].tradBal : 0;
-  var roth = retRows[0] ? retRows[0].rothBal + retRows[0].rothSpBal : 0;
-  var brok = retRows[0] ? retRows[0].brokBal : 0;
+  var survSeedRow = rows.find(function(r){ return r.isSeed; });
+  var trad = survSeedRow ? survSeedRow.tradBal : (retRows[0] ? retRows[0].tradBal : 0);
+  var roth = survSeedRow ? (survSeedRow.rothBal + survSeedRow.rothSpBal) : (retRows[0] ? retRows[0].rothBal + retRows[0].rothSpBal : 0);
+  var brok = survSeedRow ? survSeedRow.brokBal : (retRows[0] ? retRows[0].brokBal : 0);
 
   for (var i = 0; i < retRows.length; i++) {
     var r = retRows[i];
@@ -2474,7 +2480,7 @@ function renderSurvivor(rows, INP) {
 
 // ── HSA DEPLETION TIMELINE ────────────────────────────────────────────────
 function renderHSADepletion(rows, INP) {
-  var retRows = rows.filter(function(r){ return !r.isWorking; });
+  var retRows = rows.filter(function(r){ return !r.isWorking && !r.isSeed; });
   if (!retRows.length) return;
 
   var depleteAge = null, totalDraw = 0;
@@ -2518,7 +2524,7 @@ function renderHSADepletion(rows, INP) {
 function renderTaxTrend(rows, INP) {
   var el = $('tax-trend-chart');
   if (!el) return;
-  var retRows = rows.filter(function(r){ return !r.isWorking; });
+  var retRows = rows.filter(function(r){ return !r.isWorking && !r.isSeed; });
   if (!retRows.length) return;
 
   var W = 680, H = 180, padL = 44, padR = 12, padT = 14, padB = 32;
@@ -2802,7 +2808,7 @@ function showSaveStatus(msg, color) {
 function printSummary() {
   if (!window._lastRows || !window._lastINP) { alert('Please calculate first.'); return; }
   var rows = window._lastRows, INP = window._lastINP;
-  var retRows = rows.filter(function(r){ return !r.isWorking; });
+  var retRows = rows.filter(function(r){ return !r.isWorking && !r.isSeed; });
   var last = retRows[retRows.length-1];
   var firstRet = retRows[0];
   var rmdRows = retRows.filter(function(r){ return r.isRMD; });
