@@ -3421,14 +3421,54 @@ function printAllTabs() {
   var cssText = '';
   document.querySelectorAll('style').forEach(function(s) { cssText += s.textContent; });
 
-  // 3. Clone every panel, expanding collapsed sections and swapping canvas → img
-  var panelsHTML = '';
-  document.querySelectorAll('.panel').forEach(function(panel, pi) {
+  // 3. Build a clean Assumptions cover page from INP values (no raw form fields)
+  var fmtD = function(n){ return n != null ? '$' + Math.round(n).toLocaleString() : '—'; };
+  var assumptionsHTML =
+    '<div class="panel" style="page-break-before:avoid">' +
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">' +
+    '<div style="font-size:22px;font-weight:700;color:var(--navy)">🏦 Retirement Planning Model</div>' +
+    '<div style="font-size:11px;color:var(--muted);text-align:right">Generated ' + new Date().toLocaleDateString() + '<br>' + INP.state + ' · Ages ' + INP.age + '–' + INP.life + '</div>' +
+    '</div>' +
+    '<div class="section-title">Key Assumptions</div>' +
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0;font-size:12px">' +
+    // Col 1: Personal
+    '<div><strong style="color:var(--navy2)">Personal</strong><table style="width:100%;margin-top:6px;font-size:12px;border-collapse:collapse">' +
+    '<tr><td style="color:var(--muted);padding:2px 0">Current Age</td><td style="text-align:right;font-weight:600">' + INP.age + '</td></tr>' +
+    '<tr><td style="color:var(--muted);padding:2px 0">Retirement Age</td><td style="text-align:right;font-weight:600">' + INP.ret + '</td></tr>' +
+    '<tr><td style="color:var(--muted);padding:2px 0">Life Expectancy</td><td style="text-align:right;font-weight:600">' + INP.life + '</td></tr>' +
+    '<tr><td style="color:var(--muted);padding:2px 0">State</td><td style="text-align:right;font-weight:600">' + INP.state + '</td></tr>' +
+    '<tr><td style="color:var(--muted);padding:2px 0">SS Start Age</td><td style="text-align:right;font-weight:600">' + INP.ss_age + '</td></tr>' +
+    '<tr><td style="color:var(--muted);padding:2px 0">RMD Start Age</td><td style="text-align:right;font-weight:600">' + INP.rmd_age + '</td></tr>' +
+    '</table></div>' +
+    // Col 2: Balances
+    '<div><strong style="color:var(--navy2)">Current Balances</strong><table style="width:100%;margin-top:6px;font-size:12px;border-collapse:collapse">' +
+    '<tr><td style="color:var(--muted);padding:2px 0">Trad 401k (You)</td><td style="text-align:right;font-weight:600">' + fmtD(INP.trad401k) + '</td></tr>' +
+    '<tr><td style="color:var(--muted);padding:2px 0">Roth 401k + IRA</td><td style="text-align:right;font-weight:600">' + fmtD((INP.roth401k||0)+(INP.roth_ira||0)) + '</td></tr>' +
+    '<tr><td style="color:var(--muted);padding:2px 0">Brokerage</td><td style="text-align:right;font-weight:600">' + fmtD(INP.brok) + '</td></tr>' +
+    '<tr><td style="color:var(--muted);padding:2px 0">HSA</td><td style="text-align:right;font-weight:600">' + fmtD(INP.hsa) + '</td></tr>' +
+    '<tr><td style="color:var(--muted);padding:2px 0">Home Value</td><td style="text-align:right;font-weight:600">' + fmtD(INP.home_val) + '</td></tr>' +
+    '<tr><td style="color:var(--muted);padding:2px 0">Spouse Trad + Roth</td><td style="text-align:right;font-weight:600">' + fmtD((INP.trad_sp||0)+(INP.roth_sp||0)) + '</td></tr>' +
+    '</table></div>' +
+    // Col 3: Assumptions
+    '<div><strong style="color:var(--navy2)">Rates &amp; Expenses</strong><table style="width:100%;margin-top:6px;font-size:12px;border-collapse:collapse">' +
+    '<tr><td style="color:var(--muted);padding:2px 0">Growth Rate</td><td style="text-align:right;font-weight:600">' + Math.round(INP.growth*100) + '%</td></tr>' +
+    '<tr><td style="color:var(--muted);padding:2px 0">Inflation Rate</td><td style="text-align:right;font-weight:600">' + Math.round(INP.infl*100) + '%</td></tr>' +
+    '<tr><td style="color:var(--muted);padding:2px 0">SS COLA</td><td style="text-align:right;font-weight:600">' + INP.ss_cola*100 + '%</td></tr>' +
+    '<tr><td style="color:var(--muted);padding:2px 0">Monthly Living</td><td style="text-align:right;font-weight:600">' + fmtD(INP.living) + '</td></tr>' +
+    '<tr><td style="color:var(--muted);padding:2px 0">Mortgage / mo</td><td style="text-align:right;font-weight:600">' + fmtD(INP.mortgage) + '</td></tr>' +
+    '<tr><td style="color:var(--muted);padding:2px 0">Conv. Target</td><td style="text-align:right;font-weight:600">' + fmtD(INP.conv_tgt) + '</td></tr>' +
+    '</table></div>' +
+    '</div></div>';
+
+  // 3b. Clone every panel EXCEPT the Inputs tab (which contains raw personal form fields)
+  var panelsHTML = assumptionsHTML;
+  document.querySelectorAll('.panel').forEach(function(panel) {
+    if (panel.id === 'tab-inputs') return; // skip — replaced by clean assumptions above
     var clone = panel.cloneNode(true);
     clone.style.display = 'block';
     // Expand ALL collapsible sections (collapsed uses max-height:0 + opacity:0)
     clone.querySelectorAll('.collapsible-body').forEach(function(el) {
-      el.classList.remove('collapsed');          // remove class so CSS rule no longer applies
+      el.classList.remove('collapsed');
       el.style.maxHeight  = 'none';
       el.style.opacity    = '1';
       el.style.overflow   = 'visible';
@@ -3444,8 +3484,8 @@ function printAllTabs() {
       img.style.cssText = 'max-width:100%;height:auto;display:block;margin:0 auto';
       canvas.parentNode.replaceChild(img, canvas);
     });
-    // Strip interactive elements (buttons, file inputs, login modal)
-    clone.querySelectorAll('button, input[type="file"], #login-modal').forEach(function(el){ el.remove(); });
+    // Strip remaining interactive elements
+    clone.querySelectorAll('button, input, select, textarea, #login-modal').forEach(function(el){ el.remove(); });
     panelsHTML += clone.outerHTML + '\n';
   });
 
