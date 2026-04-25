@@ -1683,7 +1683,7 @@ function renderRoth(rows, INP) {
   var tC = 0, tT = 0;
   for (var i = 0; i < rows.length; i++) {
     var r = rows[i];
-    if (r.isSeed && !r.isWorking) continue; // skip seed row when already retired
+    if (r.isSeed) continue; // skip seed row — it's a current-state snapshot, not a planning year
     tC += r.conv; tT += r.ft;
     var tr = document.createElement('tr');
     if (r.isWorking)   tr.className = 'working-row';
