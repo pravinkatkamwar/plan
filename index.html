@@ -1705,8 +1705,8 @@ function renderRoth(rows, INP) {
         (futureIrmaa > 0 ? '<br><span style="font-size:10px;color:' + tierColor + '">' + fmt(futureIrmaa) + '/yr</span>' : '');
     }
     tr.innerHTML =
-      '<td>' + r.age + '</td>' +
-      '<td>' + fmt(r.tradStart) + '</td>' +
+      '<td>' + r.age + (r.isSeed ? ' ★' : '') + '</td>' +
+      '<td>' + (r.isSeed ? '—' : fmt(r.tradStart)) + '</td>' +
       '<td>' + (r.isWorking ? '—' : fmt(r.ss)) + '</td>' +
       '<td>' + (r.isWorking ? '—' : fmt(r.ss_taxable)) + '</td>' +
       convCell +
@@ -1770,8 +1770,8 @@ function renderWithdrawal(rows, INP) {
       // Working year — show salary income, no expenses/withdrawals yet
       var salaryIncome = fmt(r.totalTaxable);
       tr.innerHTML =
-        '<td>' + r.age + '</td>' +
-        '<td colspan="5" style="text-align:center;color:#5b7ec9;font-style:italic;font-family:Georgia,serif">Working — Salary ' + salaryIncome + '/yr</td>' +
+        '<td>' + r.age + (r.isSeed ? ' ★' : '') + '</td>' +
+        '<td colspan="5" style="text-align:center;color:#5b7ec9;font-style:italic;font-family:Georgia,serif">' + (r.isSeed ? 'Today — Current Balance' : 'Working — Salary ' + salaryIncome + '/yr') + '</td>' +
         '<td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>';
     } else {
       var roundedSurplus = Math.round(r.surplus);
