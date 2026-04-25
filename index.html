@@ -906,7 +906,7 @@ tbody td.tax-cell  { color: var(--red); }
         <th>Total Added</th>
         <th>Portfolio Growth</th>
         <th>Total Portfolio (EOY)</th>
-        <th>Net Worth +Home</th>
+        <th>Net Worth (Home Equity)</th>
       </tr></thead>
       <tbody id="pg-accum-body"></tbody>
     </table>
@@ -918,7 +918,7 @@ tbody td.tax-cell  { color: var(--red); }
       <thead><tr>
         <th>Age</th><th>Trad 401k</th><th>Your Roth 401k+IRA</th>
         <th>Wife Roth IRA</th><th>Wife Trad (IRA+401k)</th><th>HSA</th><th>Brokerage</th>
-        <th>Total Portfolio</th><th>Net Worth +Home</th>
+        <th>Total Portfolio</th><th>Net Worth (Home Equity)</th>
       </tr></thead>
       <caption style="caption-side:bottom;font-size:11px;color:#888;padding:4px 0">Your Roth + Wife Roth are treated as one combined pool for withdrawal sequencing &middot; <span style="background:#eaf0fb;padding:1px 5px;border-radius:3px">Blue rows</span> = working years &middot; <span style="background:#fff0e8;padding:1px 5px;border-radius:3px">Orange rows</span> = RMD years</caption>
       <tbody id="pg-body"></tbody>
@@ -1303,6 +1303,20 @@ function calcStateTax(INP, age, ss_taxable, convAmt, tradDrawAmt) {
   return (ss_taxable + convAmt + tradDrawAmt) * INP.state_rate;
 }
 
+// ── Remaining mortgage balance at a given age ────────────────────────────────
+function calcRemainingMortgage(INP, age) {
+  if (!INP.mortgage_yrs || INP.mortgage_yrs <= 0) return 0;
+  var monthlyRate = (INP.mortgage_rate || 0) / 12;
+  var totalMonths = INP.mortgage_yrs * 12;
+  var monthsElapsed = Math.max(0, (age - INP.age) * 12);
+  var monthsRemaining = Math.max(0, totalMonths - monthsElapsed);
+  if (monthsRemaining <= 0) return 0;
+  if (INP.payoff_mortgage && age >= INP.ret) return 0;
+  var pmt = INP.mortgage || 0;
+  if (monthlyRate === 0) return pmt * monthsRemaining;
+  return Math.round(pmt * (1 - Math.pow(1 + monthlyRate, -monthsRemaining)) / monthlyRate);
+}
+
 function calc(overrides) {
   var INP = {
     age:      v('i_age'),
@@ -1381,18 +1395,15 @@ function calc(overrides) {
   var spWorking0  = INP.sp_salary > 0 && INP.sp_age < INP.sp_ret;
   var spContrib0  = spWorking0 ? (INP.sp_contrib + INP.sp_salary * INP.sp_match) : 0;
 
-  // Seed balances: apply one year of growth (+ contributions only if still working)
-  // (loop starts at age+1, so first row shown is already one year ahead)
-  var trad   = alreadyRetired
-    ? INP.trad401k * (1 + INP.growth)
-    : (INP.trad401k + INP.contrib + INP.salary * INP.match) * (1 + INP.growth);
-  var roth   = (INP.roth401k + INP.roth_ira) * (1 + INP.growth);
-  var rothSp = INP.roth_sp * (1 + INP.growth);
-  var tradSp = (INP.trad_sp + INP.sp_401k + spContrib0) * (1 + INP.growth);
-  var hsa    = alreadyRetired
-    ? INP.hsa * (1 + INP.growth)
-    : (INP.hsa + INP.hsa_c) * (1 + INP.growth);
-  var brok   = INP.brok * (1 + INP.growth);
+  // Loop variables — set to current input values (same as seed row).
+  // Each iteration applies exactly one year of growth + contributions.
+  // (Previous code pre-advanced by one year, causing double-counting in the first displayed year.)
+  var trad   = INP.trad401k;
+  var roth   = INP.roth401k + INP.roth_ira;
+  var rothSp = INP.roth_sp;
+  var tradSp = INP.trad_sp + INP.sp_401k;
+  var hsa    = INP.hsa;
+  var brok   = INP.brok;
   var magiQ  = [INP.salary + INP.sp_salary, INP.salary + INP.sp_salary];
 
   var rows = [];
@@ -1410,7 +1421,7 @@ function calc(overrides) {
     rothBal: seedRoth, rothSpBal: seedRothSp, tradSpBal: seedTradSp,
     hsaBal: seedHSA, brokBal: seedBrok, totalPort: seedTotal,
     homeVal: INP.home_val || 650000,
-    netWorth: seedTotal + (INP.home_val || 650000),
+    netWorth: seedTotal + (INP.home_val || 650000) - calcRemainingMortgage(INP, INP.age),
     yourContrib: 0, matchAmt: 0, hsaContrib: 0, totalContrib: 0, portGrowthAmt: 0,
     ss: 0, ss_taxable: 0, conv: 0, totalTaxable: alreadyRetired ? 0 : INP.salary, ft: 0, effRate: 0,
     living: 0, housing: 0, propIns: 0, spIns: 0, medicareYr: 0, spMedicareYr: 0,
@@ -1444,7 +1455,7 @@ function calc(overrides) {
       var newRoth  = roth  * (1 + INP.growth);
       var newRothSp= rothSp* (1 + INP.growth);
       var newTradSp= (tradSp + spContrib) * (1 + INP.growth);
-      var newHSA   = hsa   * (1 + INP.growth);
+      var newHSA   = (hsa + INP.hsa_c) * (1 + INP.growth);
       var newBrok  = brok  * (1 + INP.growth);
       var totalPort= tradEnd + newRoth + newRothSp + newTradSp + newHSA + newBrok;
 
@@ -1464,7 +1475,7 @@ function calc(overrides) {
         tradBal: tradEnd, rothBal: newRoth, rothSpBal: newRothSp, tradSpBal: newTradSp,
         hsaBal: newHSA, brokBal: newBrok, totalPort: totalPort,
         homeVal: (INP.home_val || 650000) * Math.pow(1 + INP.home_apprec, age - INP.age),
-        netWorth: totalPort + (INP.home_val || 650000) * Math.pow(1 + INP.home_apprec, age - INP.age),
+        netWorth: totalPort + (INP.home_val || 650000) * Math.pow(1 + INP.home_apprec, age - INP.age) - calcRemainingMortgage(INP, age),
         yourContrib: yourContrib, matchAmt: matchAmt, hsaContrib: hsaContrib,
         totalContrib: yourContrib + matchAmt + hsaContrib,
         portGrowthAmt: totalPort - (trad + roth + rothSp + tradSp + hsa + brok) - yourContrib - matchAmt - hsaContrib - spContrib
@@ -1631,7 +1642,7 @@ function calc(overrides) {
         tradBal: tradEnd, rothBal: newRoth, rothSpBal: newRothSp, tradSpBal: newTradSp,
         hsaBal: newHSA, brokBal: newBrok, totalPort: totalPort,
         homeVal: (INP.home_val || 650000) * Math.pow(1 + INP.home_apprec, age - INP.age),
-        netWorth: totalPort + (INP.home_val || 650000) * Math.pow(1 + INP.home_apprec, age - INP.age),
+        netWorth: totalPort + (INP.home_val || 650000) * Math.pow(1 + INP.home_apprec, age - INP.age) - calcRemainingMortgage(INP, age),
         rmdRequired: rmdRequired, rmdFactor: rmdFactor, rmdExcess: rmdExcess,
         giftAmt: giftAmt
       });
@@ -1890,7 +1901,7 @@ function renderPortfolio(rows, INP) {
   $('pg-summary').innerHTML =
     '<div class="card gold"><div class="card-label">Total Portfolio Age ' + INP.life + '</div><div class="card-value">' + fmtK(last.totalPort) + '</div><div class="card-sub">All accounts</div></div>' +
     '<div class="card green"><div class="card-label">Roth at Age ' + INP.life + '</div><div class="card-value">' + fmtK(last.rothBal + last.rothSpBal) + '</div><div class="card-sub">Tax-free to heirs</div></div>' +
-    '<div class="card gold"><div class="card-label">Net Worth Age ' + INP.life + '</div><div class="card-value">' + fmtK(last.netWorth) + '</div><div class="card-sub">Incl. home</div></div>' +
+    '<div class="card gold"><div class="card-label">Net Worth Age ' + INP.life + '</div><div class="card-value">' + fmtK(last.netWorth) + '</div><div class="card-sub">Portfolio + home equity</div></div>' +
     '<div class="card green"><div class="card-label">HSA at Age ' + INP.life + '</div><div class="card-value">' + fmtK(last.hsaBal) + '</div><div class="card-sub">Medical reserve</div></div>';
 
   var tbody = $('pg-body');
