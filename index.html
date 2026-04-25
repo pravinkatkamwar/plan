@@ -1395,40 +1395,66 @@ function calc(overrides) {
   var spWorking0  = INP.sp_salary > 0 && INP.sp_age < INP.sp_ret;
   var spContrib0  = spWorking0 ? (INP.sp_contrib + INP.sp_salary * INP.sp_match) : 0;
 
-  // Loop variables — set to current input values (same as seed row).
-  // Each iteration applies exactly one year of growth + contributions.
-  // (Previous code pre-advanced by one year, causing double-counting in the first displayed year.)
-  var trad   = INP.trad401k;
-  var roth   = INP.roth401k + INP.roth_ira;
-  var rothSp = INP.roth_sp;
-  var tradSp = INP.trad_sp + INP.sp_401k;
-  var hsa    = INP.hsa;
-  var brok   = INP.brok;
-  var magiQ  = [INP.salary + INP.sp_salary, INP.salary + INP.sp_salary];
-
-  var rows = [];
-  var numYears = INP.life - INP.age; // dynamic: from current age to life expectancy
-  var mortgagePaidOff = false; // tracks one-time brokerage deduction at retirement
-
-  // Seed "today" row: current balances before any growth (age = INP.age)
+  // Seed row: input balances are the BEGINNING of the current year.
+  // When still working, project one year of growth + contributions so tradEnd ≠ tradStart.
+  // Loop variables then start from the seed's year-end so age 64 continues without double-counting.
   var seedTrad = INP.trad401k, seedRoth = INP.roth401k + INP.roth_ira;
   var seedRothSp = INP.roth_sp, seedTradSp = INP.trad_sp + INP.sp_401k;
   var seedHSA = INP.hsa, seedBrok = INP.brok;
   var seedTotal = seedTrad + seedRoth + seedRothSp + seedTradSp + seedHSA + seedBrok;
+
+  var seedYourContrib, seedMatchAmt, seedHSAContrib, seedSpContrib;
+  var seedTradEnd, seedRothEnd, seedRothSpEnd, seedTradSpEnd, seedHSAEnd, seedBrokEnd, seedTotalEnd;
+  if (!alreadyRetired) {
+    seedYourContrib = INP.contrib;
+    seedMatchAmt    = INP.salary * INP.match;
+    seedHSAContrib  = INP.hsa_c;
+    seedSpContrib   = spContrib0; // spouse contrib at model start (already computed above)
+    seedTradEnd  = (seedTrad  + seedYourContrib + seedMatchAmt) * (1 + INP.growth);
+    seedRothEnd  = seedRoth  * (1 + INP.growth);
+    seedRothSpEnd= seedRothSp * (1 + INP.growth);
+    seedTradSpEnd= (seedTradSp + seedSpContrib) * (1 + INP.growth);
+    seedHSAEnd   = (seedHSA   + seedHSAContrib) * (1 + INP.growth);
+    seedBrokEnd  = seedBrok  * (1 + INP.growth);
+  } else {
+    // Already retired: seed is a pure snapshot, no projection for the current year
+    seedYourContrib = 0; seedMatchAmt = 0; seedHSAContrib = 0; seedSpContrib = 0;
+    seedTradEnd = seedTrad; seedRothEnd = seedRoth; seedRothSpEnd = seedRothSp;
+    seedTradSpEnd = seedTradSp; seedHSAEnd = seedHSA; seedBrokEnd = seedBrok;
+  }
+  seedTotalEnd = seedTradEnd + seedRothEnd + seedRothSpEnd + seedTradSpEnd + seedHSAEnd + seedBrokEnd;
+
+  var rows = [];
+  var numYears = INP.life - INP.age;
+  var mortgagePaidOff = false;
+
   rows.push({
     age: INP.age, isRMD: false, isWorking: !alreadyRetired, isSeed: true,
-    tradStart: seedTrad, tradEnd: seedTrad, tradBal: seedTrad,
-    rothBal: seedRoth, rothSpBal: seedRothSp, tradSpBal: seedTradSp,
-    hsaBal: seedHSA, brokBal: seedBrok, totalPort: seedTotal,
+    tradStart: seedTrad,     // INPUT value = beginning of year 63
+    tradEnd: seedTradEnd,    // projected year-end (≠ tradStart when working)
+    tradBal: seedTradEnd,    // end-of-year convention (matches all other rows)
+    rothBal: seedRothEnd, rothSpBal: seedRothSpEnd, tradSpBal: seedTradSpEnd,
+    hsaBal: seedHSAEnd, brokBal: seedBrokEnd, totalPort: seedTotalEnd,
     homeVal: INP.home_val || 650000,
-    netWorth: seedTotal + (INP.home_val || 650000) - calcRemainingMortgage(INP, INP.age),
-    yourContrib: 0, matchAmt: 0, hsaContrib: 0, totalContrib: 0, portGrowthAmt: 0,
+    netWorth: seedTotalEnd + (INP.home_val || 650000) - calcRemainingMortgage(INP, INP.age),
+    yourContrib: seedYourContrib, matchAmt: seedMatchAmt, hsaContrib: seedHSAContrib,
+    totalContrib: seedYourContrib + seedMatchAmt + seedHSAContrib,
+    portGrowthAmt: Math.round(seedTotalEnd - seedTotal - seedYourContrib - seedMatchAmt - seedHSAContrib - seedSpContrib),
     ss: 0, ss_taxable: 0, conv: 0, totalTaxable: alreadyRetired ? 0 : INP.salary, ft: 0, effRate: 0,
     living: 0, housing: 0, propIns: 0, spIns: 0, medicareYr: 0, spMedicareYr: 0,
     totalNeeds: 0, ss_income: 0, sp_ss: 0, totalSS: 0,
     brokDraw: 0, rothDraw: 0, tradDraw: 0, hsaPay: 0, irmaaYr: 0, surplus: 0,
     stateTax: 0, stateTaxBase: 0
   });
+
+  // Loop variables start from the seed's projected year-end so each loop year adds exactly one more year.
+  var trad   = seedTradEnd;
+  var roth   = seedRothEnd;
+  var rothSp = seedRothSpEnd;
+  var tradSp = seedTradSpEnd;
+  var hsa    = seedHSAEnd;
+  var brok   = seedBrokEnd;
+  var magiQ  = [INP.salary + INP.sp_salary, INP.salary + INP.sp_salary];
 
   for (var i = 0; i < numYears; i++) {
     var age   = INP.age + 1 + i;                    // start one year ahead of current age
@@ -1706,7 +1732,7 @@ function renderRoth(rows, INP) {
     }
     tr.innerHTML =
       '<td>' + r.age + (r.isSeed ? ' ★' : '') + '</td>' +
-      '<td>' + (r.isSeed ? '—' : fmt(r.tradStart)) + '</td>' +
+      '<td>' + fmt(r.tradStart) + '</td>' +
       '<td>' + (r.isWorking ? '—' : fmt(r.ss)) + '</td>' +
       '<td>' + (r.isWorking ? '—' : fmt(r.ss_taxable)) + '</td>' +
       convCell +
@@ -1771,7 +1797,7 @@ function renderWithdrawal(rows, INP) {
       var salaryIncome = fmt(r.totalTaxable);
       tr.innerHTML =
         '<td>' + r.age + (r.isSeed ? ' ★' : '') + '</td>' +
-        '<td colspan="5" style="text-align:center;color:#5b7ec9;font-style:italic;font-family:Georgia,serif">' + (r.isSeed ? 'Today — Current Balance' : 'Working — Salary ' + salaryIncome + '/yr') + '</td>' +
+        '<td colspan="5" style="text-align:center;color:#5b7ec9;font-style:italic;font-family:Georgia,serif">Working — Salary ' + salaryIncome + '/yr</td>' +
         '<td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>';
     } else {
       var roundedSurplus = Math.round(r.surplus);
@@ -1847,7 +1873,6 @@ function renderPortfolio(rows, INP) {
     // ── Pre-retirement summary cards ──────────────────────────────────────
     var totalContribAdded = 0, totalMatchAdded = 0, totalHSAAdded = 0;
     for (var i=0;i<workRows.length;i++) {
-      if (workRows[i].isSeed) continue;
       totalContribAdded += workRows[i].yourContrib || 0;
       totalMatchAdded   += workRows[i].matchAmt || 0;
       totalHSAAdded     += workRows[i].hsaContrib || 0;
@@ -1870,17 +1895,16 @@ function renderPortfolio(rows, INP) {
         var r = workRows[i];
         var tr = document.createElement('tr');
         tr.className = r.isSeed ? '' : 'working-row';
-        var statusLabel = r.isSeed ? '<span style="color:var(--navy);font-weight:700">Today</span>' : '<span style="color:#3a6aad;font-weight:600">Working</span>';
-        var prevPort = i === 0 ? 0 : workRows[i-1].totalPort;
-        var growthAmt = r.isSeed ? 0 : Math.round(r.totalPort - prevPort - (r.yourContrib||0) - (r.matchAmt||0) - (r.hsaContrib||0));
+        var statusLabel = r.isSeed ? '<span style="color:var(--navy);font-weight:700">Today ★</span>' : '<span style="color:#3a6aad;font-weight:600">Working</span>';
+        var growthAmt = r.isSeed ? (r.portGrowthAmt||0) : Math.round(r.totalPort - (i>0?workRows[i-1].totalPort:0) - (r.yourContrib||0) - (r.matchAmt||0) - (r.hsaContrib||0));
         tr.innerHTML =
           '<td style="font-weight:700;color:var(--navy)">' + r.age + (r.isSeed ? ' ★' : '') + '</td>' +
           '<td>' + statusLabel + '</td>' +
-          '<td style="color:var(--navy2);font-weight:600">' + (r.isSeed ? '—' : fmt(r.yourContrib)) + '</td>' +
-          '<td style="color:var(--green2);font-weight:600">' + (r.isSeed ? '—' : fmt(r.matchAmt)) + '</td>' +
-          '<td style="color:var(--navy2);font-weight:600">' + (r.isSeed ? '—' : fmt(r.hsaContrib)) + '</td>' +
-          '<td style="font-weight:700;color:var(--navy)">' + (r.isSeed ? '—' : fmt((r.yourContrib||0)+(r.matchAmt||0)+(r.hsaContrib||0))) + '</td>' +
-          '<td style="color:var(--green);font-weight:600">' + (r.isSeed ? '—' : fmt(growthAmt)) + '</td>' +
+          '<td style="color:var(--navy2);font-weight:600">' + fmt(r.yourContrib) + '</td>' +
+          '<td style="color:var(--green2);font-weight:600">' + fmt(r.matchAmt) + '</td>' +
+          '<td style="color:var(--navy2);font-weight:600">' + fmt(r.hsaContrib) + '</td>' +
+          '<td style="font-weight:700;color:var(--navy)">' + fmt((r.yourContrib||0)+(r.matchAmt||0)+(r.hsaContrib||0)) + '</td>' +
+          '<td style="color:var(--green);font-weight:600">' + fmt(growthAmt) + '</td>' +
           '<td><strong>' + fmt(r.totalPort) + '</strong></td>' +
           '<td>' + fmt(r.netWorth) + '</td>';
         accumTbody.appendChild(tr);
