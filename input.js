@@ -1,33 +1,34 @@
-// ── Retirement Planner — Default Inputs ──────────────────────
-// Edit these values to change your defaults.
-// Save the file, then refresh the page.
+// ── Retirement Planner — Guest Mode Defaults ─────────────────
+// These are the numbers shown to visitors in guest mode.
+// Edit these to use a representative example (not your real numbers).
 
-window.RETIREMENT_INPUTS = {
+window.GUEST_INPUTS = {
 
   // ── Your Details ──────────────────────────────────────────
-  i_dob:      "1963-03-17",
+  i_name:     "Guest",
+  i_dob:      "1970-01-01",
   i_ret:      65,
   i_life:     85,
   i_state:    "NJ",
-  i_salary:   200000,
-  i_trad401k: 1750000,
-  i_roth401k: 200000,
+  i_salary:   300000,
+  i_trad401k: 3000000,
+  i_roth401k: 500000,
   i_contrib:  37500,
   i_match:    5,
-  i_roth_ira: 150000,
-  i_hsa:      135000,
+  i_roth_ira: 250000,
+  i_hsa:      100000,
   i_hsa_c:    8000,
-  i_brok:     1050000,
+  i_brok:     500000,
 
   // ── Wife Details ──────────────────────────────────────────
-  i_sp_dob:        "1971-01-16",
+  i_sp_dob:        "1975-01-01",
   i_sp_ret:        65,
   i_sp_salary:     0,
   i_sp_401k:       0,
   i_sp_contrib:    0,
   i_sp_match_rate: 0,
-  i_trad_sp:       84000,
-  i_roth_sp:       11000,
+  i_trad_sp:       50000,
+  i_roth_sp:       10000,
 
   // ── Growth & Social Security ──────────────────────────────
   i_growth:    8,
@@ -41,14 +42,18 @@ window.RETIREMENT_INPUTS = {
 
   // ── Expenses ──────────────────────────────────────────────
   i_living:          7000,
-  i_mortgage:        2250,
+  i_mortgage:        3000,
+  i_mortgage_yrs:    22,
+  i_mortgage_rate:   6.5,
+  i_mortgage_bal:    350000,
   i_payoff_mortgage: false,
-  i_prop_tax:        13500,
+  i_prop_tax:        15000,
   i_home_ins:        1500,
   i_medicare:        185,
   i_med_infl:        5.0,
   i_sp_ins:          800,
-  i_home_val:        650000,
+  i_home_val:        800000,
+  i_home_apprec:     4.5,
   i_annual_gift:     0,
   i_gift_age:        70,
 
